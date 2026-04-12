@@ -1,0 +1,4 @@
+flask>=3.0
+paho-mqtt>=1.6
+gpiozero>=2.0
+pymavlink>=2.4

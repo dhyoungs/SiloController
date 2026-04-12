@@ -2,3 +2,18 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+.venv/
+
+# Recordings — keep directory structure, exclude data files
+recordings/*.csv
+recordings/video/*.mp4
+recordings/video/*.h264
+
+# Persistent state (machine-specific)
+silo_state.json
+calibration.json
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo

@@ -1,0 +1,2702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Patrick Blackett — Silo 2 Controller</title>
+  <style>
+    :root{
+      --bg:     #040c18; --card:   #0a1628; --border: #1a3a5c;
+      --gold:   #c89b2a; --cyan:   #00c8f0; --green:  #00c870;
+      --red:    #c83030; --amber:  #e07820; --fg:     #c0d0e0;
+      --dim:    #3a5a7a; --muted:  #6080a0; --white:  #e0f0ff;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"Courier New",Courier,monospace;background:var(--bg);
+         color:var(--fg);min-height:100vh}
+
+    /* ── Header ── */
+    .site-header{background:var(--card);border-bottom:1px solid var(--gold);
+      padding:.5rem 1rem;display:flex;align-items:center;
+      justify-content:space-between;flex-wrap:wrap;gap:.4rem}
+    .site-title{display:flex;align-items:baseline;gap:.5rem}
+    .site-title .t1{color:var(--gold);font-size:.95rem;font-weight:700;
+                    letter-spacing:.12em;text-transform:uppercase}
+    .site-title .t2{color:var(--white);font-size:.95rem;font-weight:700;
+                    letter-spacing:.08em;text-transform:uppercase}
+    .hdr-meta{display:flex;gap:.8rem;font-size:.68rem;color:var(--muted);
+              letter-spacing:.05em;align-items:center;flex-wrap:wrap}
+    .hdr-meta .hl{color:var(--cyan)}
+    .hdr-meta .lbl{color:var(--dim)}
+    .btn-hdr{padding:.28rem .7rem;background:var(--bg);color:var(--amber);
+             border:1px solid var(--amber);font-family:inherit;font-size:.65rem;
+             font-weight:700;letter-spacing:.1em;cursor:pointer}
+    .btn-hdr:hover{background:var(--amber);color:#1a0800}
+
+    /* ── Tabs ── */
+    .tab-bar{display:flex;border-bottom:1px solid var(--border);
+             padding:0 1rem;background:var(--card)}
+    .tab-btn{padding:.45rem 1.1rem;font-family:inherit;font-size:.72rem;
+             font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+             border:none;background:none;color:var(--dim);cursor:pointer;
+             border-bottom:2px solid transparent;margin-bottom:-1px}
+    .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+
+    /* ── Layout ── */
+    .main{display:grid;grid-template-columns:220px 1fr;gap:.7rem;
+          padding:.7rem 1rem}
+    @media(max-width:640px){.main{grid-template-columns:1fr}}
+
+    /* ── Cards ── */
+    .card{background:var(--card);border:1px solid var(--border);
+          padding:.7rem;margin-bottom:.6rem}
+    .card:last-child{margin-bottom:0}
+    .sec-title{font-size:.62rem;font-weight:700;letter-spacing:.14em;
+               text-transform:uppercase;color:var(--gold);
+               border-bottom:1px solid var(--border);
+               padding-bottom:.28rem;margin-bottom:.55rem}
+
+    /* ── Dots ── */
+    .dot{width:10px;height:10px;border-radius:50%;display:inline-block;
+         flex-shrink:0;vertical-align:middle;margin-right:.4rem}
+    .dot.closed{background:var(--red)}   .dot.opening{background:var(--amber);animation:pulse .7s infinite}
+    .dot.open  {background:var(--green)} .dot.closing{background:var(--amber);animation:pulse .7s infinite}
+    .dot.idle  {background:var(--dim)}   .dot.active {background:var(--red);animation:pulse .7s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+    .state-label{font-size:.9rem;font-weight:700;letter-spacing:.06em;vertical-align:middle}
+
+    /* ── Buttons ── */
+    .btn-row{display:flex;gap:.4rem;margin-top:.5rem}
+    button{flex:1;padding:.42rem .3rem;border:1px solid transparent;
+           font-family:inherit;font-size:.78rem;font-weight:700;
+           letter-spacing:.08em;cursor:pointer;
+           transition:opacity .15s;text-transform:uppercase}
+    button:hover:not(:disabled){opacity:.8}
+    button:disabled{opacity:.3;cursor:not-allowed}
+    .btn-open {background:var(--green);color:#001a0a;border-color:var(--green)}
+    .btn-close{background:var(--red);  color:#1a0000;border-color:var(--red)}
+    .btn-start{background:var(--green);color:#001a0a;border-color:var(--green)}
+    .btn-stop {background:var(--red);  color:#1a0000;border-color:var(--red)}
+
+    /* ── Navigation grid ── */
+    .nav-grid{display:grid;grid-template-columns:repeat(4,auto 1fr);
+              gap:.18rem .4rem;align-items:center}
+    .nname{font-size:.62rem;color:var(--dim);text-align:right;
+           letter-spacing:.06em;text-transform:uppercase}
+    .nval{font-size:.8rem;color:var(--cyan);font-weight:700;padding-left:.25rem}
+
+    /* ── Stats table ── */
+    .stat-table{width:100%;border-collapse:collapse;font-size:.72rem}
+    .stat-table th{color:var(--dim);font-size:.58rem;letter-spacing:.1em;
+      text-transform:uppercase;padding:.22rem .3rem;
+      border-bottom:1px solid var(--border);text-align:center;font-weight:normal}
+    .stat-table th:first-child{text-align:left}
+    .stat-table td{padding:.2rem .3rem;border-bottom:1px solid #0d1928;text-align:center}
+    .stat-table td.metric{color:var(--gold);text-align:left;font-weight:700;
+                          white-space:nowrap;letter-spacing:.04em}
+    .stat-table td.cur{color:var(--white);font-weight:700}
+    .stat-table td.win{color:var(--cyan);font-size:.68rem}
+
+    /* ── GPS diag ── */
+    .gps-grid{display:grid;grid-template-columns:1fr 1fr;gap:.22rem .5rem;font-size:.7rem}
+    .gps-label{color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+    .gps-val{color:var(--cyan);font-weight:700}
+
+    /* ── Vis row ── */
+    .vis-row{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.4rem}
+    .vis-card{background:var(--card);border:1px solid var(--border);
+              padding:.4rem .6rem;display:inline-flex;flex-direction:column;align-items:center}
+    .vis-card .sec-title{width:100%}
+    canvas{display:block}
+
+    /* ── History tab ── */
+    .hist-panel{padding:.7rem 1rem}
+    .hist-map-wrap{position:relative;background:var(--card);
+                   border:1px solid var(--border);margin-bottom:.7rem}
+    .map-toolbar{display:flex;gap:.4rem;padding:.4rem .6rem;
+                 border-bottom:1px solid var(--border);align-items:center}
+    .map-toolbar .sec-title{margin:0;border:none;padding:0;flex:1}
+    .btn-sm{padding:.22rem .55rem;background:var(--bg);color:var(--cyan);
+            border:1px solid var(--border);font-family:inherit;font-size:.65rem;
+            font-weight:700;cursor:pointer;letter-spacing:.08em}
+    .btn-sm:hover{background:var(--border)}
+    #map-canvas{cursor:grab;max-width:100%}
+    #map-canvas:active{cursor:grabbing}
+
+    /* Chart cards */
+    .hist-row{display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.7rem}
+    .chart-card{flex:1;min-width:280px;background:var(--card);
+                border:1px solid var(--border);padding:.5rem .7rem;position:relative}
+    .chart-card .sec-title{margin-bottom:.3rem}
+    .chart-expand{position:absolute;top:.4rem;right:.4rem;
+                  padding:.15rem .4rem;background:var(--bg);color:var(--dim);
+                  border:1px solid var(--border);font-family:inherit;font-size:.6rem;
+                  cursor:pointer;letter-spacing:.06em}
+    .chart-expand:hover{color:var(--cyan)}
+    .chart-canvas{display:block;max-width:100%;cursor:crosshair}
+
+    /* ── Fullscreen overlay ── */
+    .overlay{display:none;position:fixed;inset:0;background:#000d;
+             z-index:1000;flex-direction:column;padding:.8rem}
+    .overlay.active{display:flex}
+    .overlay-inner{background:var(--card);border:1px solid var(--gold);
+                   flex:1;display:flex;flex-direction:column;overflow:hidden}
+    .overlay-bar{display:flex;align-items:center;padding:.4rem .7rem;
+                 border-bottom:1px solid var(--border);gap:.5rem}
+    .overlay-title{flex:1;font-size:.75rem;font-weight:700;color:var(--gold);
+                   letter-spacing:.1em;text-transform:uppercase}
+    .overlay-canvas{flex:1;display:block;min-height:0}
+
+    /* ── Log ── */
+    .log{font-size:.63rem;color:var(--dim);max-height:160px;overflow-y:auto;
+         margin:.3rem 1rem;border-top:1px solid var(--border);padding-top:.25rem}
+    .log p{padding:.08rem 0}
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="site-title">
+    <span class="t1">Patrick Blackett</span>
+    <span class="t2">Silo 2 Controller</span>
+  </div>
+  <div class="hdr-meta">
+    <span><span class="lbl">IP </span><span class="hl" id="pi-ip">—</span></span>
+    <span><span class="lbl">SW UP </span><span class="hl" id="sw-uptime">—</span></span>
+    <span><span class="lbl">HW UP </span><span class="hl" id="hw-uptime">—</span></span>
+    <span><span class="lbl">UTC </span><span class="hl" id="utc-time">—</span></span>
+    <button class="btn-hdr" id="btn-restart" onclick="doRestart()">RESTART</button>
+  </div>
+</header>
+
+<!-- ── Tabs ── -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('live',this)">Live</button>
+  <button class="tab-btn"        onclick="showTab('video',this)">Video</button>
+  <button class="tab-btn"        onclick="showTab('history',this)">History</button>
+  <button class="tab-btn"        onclick="showTab('diag',this)">Diagnostics</button>
+  <button class="tab-btn"        onclick="showTab('logs',this)">Log Files</button>
+  <button class="tab-btn"        onclick="showTab('config',this)">Configuration</button>
+  <button class="tab-btn"        onclick="showTab('docs',this)">API Docs</button>
+</div>
+
+<!-- ══════════════════ LIVE TAB ══════════════════ -->
+<div id="tab-live" class="tab-panel active">
+<div class="main">
+  <!-- Left -->
+  <div>
+    <div class="card">
+      <div class="sec-title">Silo Lid</div>
+      <span class="dot closed" id="silo-dot"></span>
+      <span class="state-label" id="state-label">CLOSED</span>
+      <div class="btn-row">
+        <button class="btn-open"  id="btn-open"  onclick="siloCmd('open')">Open</button>
+        <button class="btn-close" id="btn-close" onclick="siloCmd('close')">Close</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-title">Sea Trials Data Recording</div>
+      <span class="dot idle" id="rec-dot"></span>
+      <span class="state-label" id="rec-label">IDLE</span>
+      <div class="btn-row">
+        <button class="btn-start" id="btn-start" onclick="recCmd('start')">Start</button>
+        <button class="btn-stop"  id="btn-stop"  onclick="recCmd('stop')" disabled>Stop</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-title">GPS Diagnostics</div>
+      <div class="gps-grid">
+        <span class="gps-label">Fix</span>    <span class="gps-val" id="g-fix">—</span>
+        <span class="gps-label">Sats</span>   <span class="gps-val" id="g-sats">—</span>
+        <span class="gps-label">HDOP</span>   <span class="gps-val" id="g-hdop">—</span>
+        <span class="gps-label">VDOP</span>   <span class="gps-val" id="g-vdop">—</span>
+        <span class="gps-label">H-Acc</span>  <span class="gps-val" id="g-hacc">—</span>
+        <span class="gps-label">V-Acc</span>  <span class="gps-val" id="g-vacc">—</span>
+      </div>
+      <div style="margin-top:.5rem;border-top:1px solid var(--border);padding-top:.4rem">
+        <div class="sec-title" style="margin-bottom:.35rem">mLRS Link</div>
+        <div class="gps-grid">
+          <span class="gps-label">RSSI</span>   <span class="gps-val" id="l-rssi">—</span>
+          <span class="gps-label">LQ</span>      <span class="gps-val" id="l-lq">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right -->
+  <div>
+    <div class="card">
+      <div class="sec-title">Navigation</div>
+      <div class="nav-grid">
+        <span class="nname">Lat</span>   <span class="nval" id="n-lat">—</span>
+        <span class="nname">Lon</span>   <span class="nval" id="n-lon">—</span>
+        <span class="nname">Alt</span>   <span class="nval" id="n-alt">—</span>
+        <span class="nname">GPS</span>   <span class="nval" id="n-gps">—</span>
+        <span class="nname">COG</span>   <span class="nval" id="n-cog">—</span>
+        <span class="nname">Speed</span> <span class="nval" id="n-spd">—</span>
+        <span class="nname">Pitch</span> <span class="nval" id="n-pitch">—</span>
+        <span class="nname">Roll</span>  <span class="nval" id="n-roll">—</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-title">Motion Analysis</div>
+      <table class="stat-table">
+        <thead><tr>
+          <th></th>
+          <th>NOW</th>
+          <th>1m&nbsp;min/avg/max</th>
+          <th>5m&nbsp;min/avg/max</th>
+          <th>10m&nbsp;min/avg/max</th>
+          <th>30m&nbsp;min/avg/max</th>
+        </tr></thead>
+        <tbody id="stat-body"></tbody>
+      </table>
+    </div>
+    <div class="vis-row">
+      <div class="vis-card">
+        <div class="sec-title">Motion</div>
+        <canvas id="att-canvas" width="110" height="110"></canvas>
+      </div>
+      <div class="vis-card">
+        <div class="sec-title">Bearing</div>
+        <canvas id="cmp-canvas" width="110" height="110"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /live -->
+
+<!-- ══════════════════ HISTORY TAB ══════════════════ -->
+<div id="tab-history" class="tab-panel">
+<div class="hist-panel">
+
+  <!-- Map -->
+  <div class="hist-map-wrap">
+    <div class="map-toolbar">
+      <div class="sec-title">Track — English Channel</div>
+      <button class="btn-sm" onclick="mapResetView()">Reset</button>
+      <button class="btn-sm" onclick="mapZoomIn()">＋</button>
+      <button class="btn-sm" onclick="mapZoomOut()">－</button>
+      <button class="btn-sm" onclick="openMapFullscreen()">⛶ Full</button>
+    </div>
+    <canvas id="map-canvas" width="940" height="360"></canvas>
+  </div>
+
+  <!-- Charts -->
+  <div class="hist-row">
+    <div class="chart-card"><div class="sec-title">Speed (kt)</div>
+      <button class="chart-expand" onclick="openChartFS('speed','Speed (kt)')">⛶</button>
+      <canvas class="chart-canvas" id="ch-speed"   width="440" height="150"></canvas></div>
+    <div class="chart-card"><div class="sec-title">Heading (°)</div>
+      <button class="chart-expand" onclick="openChartFS('heading','Heading (°)')">⛶</button>
+      <canvas class="chart-canvas" id="ch-heading" width="440" height="150"></canvas></div>
+  </div>
+  <div class="hist-row">
+    <div class="chart-card"><div class="sec-title">Pitch (°)</div>
+      <button class="chart-expand" onclick="openChartFS('pitch','Pitch (°)')">⛶</button>
+      <canvas class="chart-canvas" id="ch-pitch"   width="440" height="150"></canvas></div>
+    <div class="chart-card"><div class="sec-title">Pitch Rate (°/s)</div>
+      <button class="chart-expand" onclick="openChartFS('pitchr','Pitch Rate (°/s)')">⛶</button>
+      <canvas class="chart-canvas" id="ch-pitchr"  width="440" height="150"></canvas></div>
+  </div>
+  <div class="hist-row">
+    <div class="chart-card"><div class="sec-title">Roll (°)</div>
+      <button class="chart-expand" onclick="openChartFS('roll','Roll (°)')">⛶</button>
+      <canvas class="chart-canvas" id="ch-roll"    width="440" height="150"></canvas></div>
+    <div class="chart-card"><div class="sec-title">Roll Rate (°/s)</div>
+      <button class="chart-expand" onclick="openChartFS('rollr','Roll Rate (°/s)')">⛶</button>
+      <canvas class="chart-canvas" id="ch-rollr"   width="440" height="150"></canvas></div>
+  </div>
+  <div class="hist-row">
+    <div class="chart-card"><div class="sec-title">Yaw Rate (°/s)</div>
+      <button class="chart-expand" onclick="openChartFS('yawr','Yaw Rate (°/s)')">⛶</button>
+      <canvas class="chart-canvas" id="ch-yawr"    width="440" height="150"></canvas></div>
+    <div class="chart-card"><div class="sec-title">Altitude (m)</div>
+      <button class="chart-expand" onclick="openChartFS('alt','Altitude (m)')">⛶</button>
+      <canvas class="chart-canvas" id="ch-alt"     width="440" height="150"></canvas></div>
+  </div>
+
+</div>
+</div><!-- /history -->
+
+<!-- ══════════════════ DIAGNOSTICS TAB ══════════════════ -->
+<div id="tab-diag" class="tab-panel">
+<div class="hist-panel">
+
+  <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.7rem">
+
+    <!-- Autopilot identity -->
+    <div class="card" style="flex:1;min-width:260px">
+      <div class="sec-title">Autopilot / Firmware</div>
+      <table class="diag-table" id="dt-fw"></table>
+    </div>
+
+    <!-- System status -->
+    <div class="card" style="flex:1;min-width:260px">
+      <div class="sec-title">System Status</div>
+      <table class="diag-table" id="dt-sys"></table>
+    </div>
+
+    <!-- EKF -->
+    <div class="card" style="flex:1;min-width:220px">
+      <div class="sec-title">EKF Health</div>
+      <table class="diag-table" id="dt-ekf"></table>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.7rem">
+
+    <!-- GPS detail -->
+    <div class="card" style="flex:1;min-width:280px">
+      <div class="sec-title">GPS Signal</div>
+      <table class="diag-table" id="dt-gps"></table>
+    </div>
+
+    <!-- GPS module hardware -->
+    <div class="card" style="flex:1;min-width:280px">
+      <div class="sec-title" style="display:flex;align-items:center;gap:.5rem">
+        GPS Module
+        <button class="btn-sm" id="btn-gps-redetect" onclick="redetectGPS()">Re-detect</button>
+      </div>
+      <table class="diag-table" id="dt-gps-mod"></table>
+      <div id="gps-mod-log" style="font-size:.63rem;color:var(--dim);margin-top:.35rem;
+           font-family:'Courier New',monospace;line-height:1.5;white-space:pre-wrap"></div>
+      <div style="font-size:.61rem;color:var(--amber);margin-top:.35rem;line-height:1.4">
+        ⓘ HW/SW version strings are broadcast by ArduPilot at boot only.
+        They appear here if the controller is restarted while this page is connected.
+        Serial number is not transmitted over MAVLink.
+      </div>
+    </div>
+
+    <!-- Satellite sky plot + table -->
+    <div class="card" style="flex:2;min-width:340px">
+      <div class="sec-title">Satellites in View</div>
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-start">
+        <canvas id="sky-canvas" width="180" height="180"
+                style="background:#040c18;border:1px solid var(--border)"></canvas>
+        <div style="flex:1;overflow-x:auto">
+          <table class="stat-table" id="sat-table">
+            <thead><tr>
+              <th>PRN</th><th>EL°</th><th>AZ°</th><th>SNR</th><th>USED</th>
+            </tr></thead>
+            <tbody id="sat-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- mLRS / Radio link -->
+  <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.7rem">
+    <div class="card" style="flex:1;min-width:240px">
+      <div class="sec-title">mLRS / Radio Link</div>
+      <table class="diag-table" id="dt-radio"></table>
+    </div>
+    <div class="card" style="flex:1;min-width:240px">
+      <div class="sec-title">Battery / Power</div>
+      <table class="diag-table" id="dt-batt"></table>
+      <div style="font-size:.63rem;color:var(--amber);margin-top:.4rem;line-height:1.4">
+        ⚠ If battery % looks wrong, check ArduPilot BATT_MONITOR parameter.
+        USB power (5V) will read as ~0% against a LiPo profile.
+      </div>
+    </div>
+  </div>
+
+  <!-- Status log -->
+  <div class="card">
+    <div class="sec-title" style="display:flex;align-items:center;gap:.5rem">
+      FC Status Log
+      <button class="btn-sm" onclick="clearDiagLog()">Clear</button>
+      <button class="btn-sm" onclick="loadDiag()">Refresh</button>
+    </div>
+    <div id="diag-log" style="font-size:.68rem;max-height:660px;overflow-y:auto;
+         font-family:'Courier New',monospace;color:var(--fg)"></div>
+  </div>
+
+</div>
+</div><!-- /diag -->
+
+<style>
+.diag-table{width:100%;border-collapse:collapse;font-size:.72rem}
+.diag-table td{padding:.22rem .3rem;border-bottom:1px solid #0d1928}
+.diag-table td:first-child{color:var(--dim);text-transform:uppercase;
+  letter-spacing:.06em;white-space:nowrap;width:40%;padding-right:.6rem}
+.diag-table td:last-child{color:var(--cyan);font-weight:700;word-break:break-all}
+.diag-table .warn{color:var(--amber)}
+.diag-table .err {color:var(--red)}
+</style>
+
+<!-- ══════════════════ LOG FILES TAB ══════════════════ -->
+<div id="tab-logs" class="tab-panel">
+<div class="hist-panel">
+
+  <div style="display:flex;gap:.7rem;flex-wrap:wrap;align-items:flex-start">
+
+    <!-- File list (left) -->
+    <div style="flex:1;min-width:300px">
+      <div class="card" style="margin-bottom:0">
+        <div class="sec-title" style="display:flex;align-items:center;gap:.5rem">
+          Recordings
+          <button class="btn-sm" onclick="loadLogList()">↺ Refresh</button>
+          <span style="margin-left:auto;font-size:.62rem;color:var(--dim)" id="log-dir-path"></span>
+        </div>
+        <!-- Sort controls -->
+        <div style="display:flex;gap:.4rem;margin-bottom:.5rem;font-size:.65rem;flex-wrap:wrap">
+          <span style="color:var(--dim)">Sort:</span>
+          <button class="btn-sm" onclick="sortLogs('modified')">Date</button>
+          <button class="btn-sm" onclick="sortLogs('name')">Name</button>
+          <button class="btn-sm" onclick="sortLogs('size_b')">Size</button>
+          <button class="btn-sm" onclick="sortLogs('rows')">Rows</button>
+          <span style="color:var(--dim);margin-left:.5rem" id="log-count"></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="stat-table" id="log-file-table" style="min-width:420px">
+            <thead><tr>
+              <th style="text-align:left">Filename</th>
+              <th>Size</th>
+              <th>Rows</th>
+              <th>Date (UTC)</th>
+            </tr></thead>
+            <tbody id="log-file-body">
+              <tr><td colspan="4" style="color:var(--dim);text-align:center;padding:.6rem">
+                Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary panel (right) -->
+    <div style="flex:2;min-width:320px" id="log-summary-panel">
+      <div class="card" style="color:var(--dim);font-size:.75rem;text-align:center;
+           padding:2rem;margin-bottom:0">
+        Select a recording from the list to view its summary.
+      </div>
+    </div>
+
+  </div>
+</div>
+</div><!-- /logs -->
+
+<style>
+/* Log file list row hover + selected */
+.log-row{cursor:pointer;transition:background .1s}
+.log-row:hover td{background:#0d1f38}
+.log-row.selected td{background:#0f2540;color:var(--white)}
+.log-row.selected td.metric{color:var(--gold)}
+/* Summary metric table */
+.sum-table{width:100%;border-collapse:collapse;font-size:.72rem;margin-top:.4rem}
+.sum-table th{color:var(--dim);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:.22rem .35rem;border-bottom:1px solid var(--border);text-align:center}
+.sum-table th:first-child{text-align:left}
+.sum-table td{padding:.2rem .35rem;border-bottom:1px solid #0d1928;text-align:center}
+.sum-table td:first-child{color:var(--gold);text-align:left;font-weight:700;white-space:nowrap}
+.sum-table td.mn{color:var(--cyan)}
+.sum-table td.av{color:var(--fg)}
+.sum-table td.mx{color:var(--white);font-weight:700}
+/* Mini map */
+#log-mini-map{background:#040e20;border:1px solid var(--border);
+              display:block;max-width:100%;cursor:grab}
+#log-mini-map:active{cursor:grabbing}
+</style>
+
+<!-- ══════════════════ CONFIGURATION TAB ══════════════════ -->
+<div id="tab-config" class="tab-panel">
+<div class="hist-panel">
+<style>
+.cfg-card{background:#061220;border:1px solid var(--border);border-radius:4px;
+  padding:1rem 1.1rem;margin-bottom:.8rem;max-width:560px}
+.cfg-h{font-size:.8rem;font-weight:700;color:var(--gold);margin-bottom:.5rem;letter-spacing:.05em}
+.cfg-note{font-size:.68rem;color:var(--dim);line-height:1.6;margin-bottom:.8rem}
+.cfg-state-row{display:flex;gap:.7rem;align-items:center;margin-bottom:.8rem}
+.cfg-declare-btn{padding:.6rem 1.4rem;font-size:.8rem;font-weight:700;border:none;
+  border-radius:3px;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.cfg-declare-btn:disabled{opacity:.4;cursor:default}
+.cfg-open-btn {background:var(--green);color:#000}
+.cfg-close-btn{background:var(--red);color:#fff}
+</style>
+
+  <!-- Silo state declaration -->
+  <div class="cfg-card">
+    <div class="cfg-h">Declare Silo Position</div>
+    <p class="cfg-note">
+      Use this if the software state has lost sync with reality — for example after a power cut
+      mid-travel, a manual override, or a service restart while the actuator was moving.<br><br>
+      This does <strong>not</strong> move the actuator. It simply tells the software what position
+      the silo is actually in right now, so the next Open or Close command works correctly.
+    </p>
+
+    <div style="font-size:.72rem;color:var(--dim);margin-bottom:.5rem">
+      Software currently believes the silo is:
+      <span id="cfg-current-state" style="color:var(--cyan);font-weight:700;margin-left:.3rem">—</span>
+    </div>
+    <div style="font-size:.72rem;color:var(--dim);margin-bottom:.9rem">
+      Relay position tracked as:
+      <span id="cfg-relay-state" style="color:var(--cyan);font-weight:700;margin-left:.3rem">—</span>
+    </div>
+
+    <div class="cfg-state-row">
+      <button class="cfg-declare-btn cfg-open-btn" onclick="declareState(true)">
+        ▲ Silo is currently OPEN
+      </button>
+      <button class="cfg-declare-btn cfg-close-btn" onclick="declareState(false)">
+        ▼ Silo is currently CLOSED
+      </button>
+    </div>
+
+    <div id="cfg-feedback" style="font-size:.7rem;min-height:1.2rem;color:var(--green)"></div>
+  </div>
+
+  <!-- Travel time -->
+  <div class="cfg-card">
+    <div class="cfg-h">Actuator Travel Time</div>
+    <p class="cfg-note">
+      How long the software waits in OPENING / CLOSING state before declaring the move complete.
+      The Linak internal limit switches stop the motor automatically at both ends, so this is a
+      display timer rather than a hard stop — but it should match your actual stroke time.<br><br>
+      Set it slightly longer than the actual full-stroke time (e.g. if the actuator takes 8 s,
+      set 10 s).
+    </p>
+    <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <label style="font-size:.72rem;color:var(--dim)">Travel time (seconds):</label>
+      <input id="cfg-travel-input" type="number" min="0.5" max="120" step="0.5"
+             style="width:70px;background:#020d1a;border:1px solid var(--border);
+                    color:var(--cyan);padding:.35rem .5rem;border-radius:3px;
+                    font-family:inherit;font-size:.8rem;font-weight:700"
+             value="2">
+      <button class="cfg-declare-btn" style="background:var(--gold);color:#000;padding:.5rem 1rem"
+              onclick="saveTravelTime()">Save</button>
+    </div>
+    <div id="cfg-travel-feedback" style="font-size:.7rem;min-height:1.2rem;color:var(--green)"></div>
+  </div>
+
+  <!-- Attitude calibration -->
+  <div class="cfg-card">
+    <div class="cfg-h">Attitude Calibration — Level Reference</div>
+    <p class="cfg-note">
+      Sets the pitch and roll zero point. When the vessel is floating at its
+      normal operating attitude, click <strong>Capture Level Now</strong> to store the
+      current pitch and roll as offsets — all displayed values will then read zero at
+      that attitude.<br><br>
+      Or enter manual offsets below (degrees subtracted from raw sensor values).
+      Offsets survive reboots (saved to <code>calibration.json</code>).
+    </p>
+
+    <div style="font-size:.72rem;margin-bottom:.7rem">
+      <span style="color:var(--dim)">Current offsets applied:</span>
+      <span style="color:var(--cyan);font-weight:700;margin-left:.5rem">
+        Pitch <span id="cal-cur-pitch">—</span>°&nbsp;&nbsp;
+        Roll <span id="cal-cur-roll">—</span>°
+      </span>
+    </div>
+
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.7rem">
+      <button class="cfg-declare-btn"
+              style="background:var(--cyan);color:#000;padding:.55rem 1.2rem;font-size:.78rem"
+              onclick="calCapture()">
+        ◎ Capture Level Now
+      </button>
+      <span style="font-size:.68rem;color:var(--dim)">
+        Sets offset = current pitch &amp; roll reading
+      </span>
+    </div>
+
+    <div style="display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">
+      <label style="font-size:.72rem;color:var(--dim)">Pitch offset (°):</label>
+      <input id="cal-pitch-input" type="number" step="0.1" min="-45" max="45"
+             style="width:72px;background:#020d1a;border:1px solid var(--border);
+                    color:var(--cyan);padding:.3rem .4rem;font-family:inherit;font-size:.8rem"
+             value="0">
+      <label style="font-size:.72rem;color:var(--dim)">Roll offset (°):</label>
+      <input id="cal-roll-input" type="number" step="0.1" min="-45" max="45"
+             style="width:72px;background:#020d1a;border:1px solid var(--border);
+                    color:var(--cyan);padding:.3rem .4rem;font-family:inherit;font-size:.8rem"
+             value="0">
+      <button class="cfg-declare-btn"
+              style="background:var(--gold);color:#000;padding:.45rem .9rem"
+              onclick="calSave()">Save Offsets</button>
+      <button class="cfg-declare-btn"
+              style="background:#1a1a1a;color:var(--dim);border:1px solid var(--dim);
+                     padding:.45rem .9rem"
+              onclick="calReset()">Reset to Zero</button>
+    </div>
+
+    <div id="cal-feedback" style="font-size:.7rem;min-height:1.2rem;color:var(--green)"></div>
+  </div>
+
+  <!-- Stress test -->
+  <div class="cfg-card">
+    <div class="cfg-h">Stress Test — Automated Cycle</div>
+    <p class="cfg-note">
+      Repeatedly opens and closes the silo lid to test the actuator and relay under load.
+      The controller waits for each move to complete before starting the next.
+      <strong>Ensure the area around the actuator is clear before starting.</strong>
+    </p>
+    <div style="display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;margin-bottom:.6rem">
+      <label style="font-size:.72rem;color:var(--dim)">Cycles:</label>
+      <input id="st-cycles" type="number" min="1" max="500" step="1" value="10"
+             style="width:64px;background:#020d1a;border:1px solid var(--border);
+                    color:var(--cyan);padding:.3rem .4rem;font-family:inherit;font-size:.8rem">
+      <label style="font-size:.72rem;color:var(--dim)">Pause between (s):</label>
+      <input id="st-pause" type="number" min="0.5" max="60" step="0.5" value="3"
+             style="width:64px;background:#020d1a;border:1px solid var(--border);
+                    color:var(--cyan);padding:.3rem .4rem;font-family:inherit;font-size:.8rem">
+      <button class="cfg-declare-btn" id="st-start-btn"
+              style="background:var(--amber);color:#1a0800;padding:.5rem 1rem"
+              onclick="stressStart()">▶ Start Test</button>
+      <button class="cfg-declare-btn" id="st-stop-btn"
+              style="background:var(--red);color:#fff;padding:.5rem 1rem;display:none"
+              onclick="stressStop()">■ Stop</button>
+    </div>
+    <div id="st-progress" style="font-size:.72rem;min-height:1.4rem;color:var(--dim)"></div>
+    <div id="st-bar-wrap" style="display:none;height:8px;background:#0d1928;
+         border:1px solid var(--border);border-radius:4px;margin-top:.4rem;overflow:hidden">
+      <div id="st-bar" style="height:100%;background:var(--amber);width:0%;transition:width .4s"></div>
+    </div>
+  </div>
+
+  <!-- Relay wiring note -->
+  <div class="cfg-card">
+    <div class="cfg-h">Relay Toggle Behaviour</div>
+    <p class="cfg-note">
+      The DR25E01 is a <strong>bistable toggle relay</strong> — each LOW pulse on T flips it to the
+      opposite position. The software tracks which position the relay is in and only pulses when a
+      direction change is needed.<br><br>
+      The tracked state is saved to <code>silo_state.json</code> and survives reboots and
+      service restarts. If the physical relay ever gets out of sync, use the buttons above
+      to re-synchronise.
+    </p>
+    <table class="diag-table" style="max-width:400px">
+      <tr><td>Control pin</td><td>GPIO 17 → DR25E01 T</td></tr>
+      <tr><td>Idle level</td><td>HIGH (T held high between moves)</td></tr>
+      <tr><td>Trigger</td><td>LOW pulse (100 ms) toggles relay</td></tr>
+      <tr><td>State file</td><td>silo_state.json (project root)</td></tr>
+    </table>
+  </div>
+
+</div>
+</div><!-- /config -->
+
+<!-- ══════════════════ VIDEO TAB ══════════════════ -->
+<div id="tab-video" class="tab-panel">
+<style>
+/* ── Military test-range video aesthetics ── */
+.vid-shell{
+  background:#020912;padding:.7rem 1rem;
+  display:flex;flex-direction:column;gap:.6rem;
+  font-family:"Courier New",Courier,monospace;
+}
+.vid-header{
+  display:flex;align-items:center;gap:.6rem;padding:.35rem .6rem;
+  background:#040e20;border:1px solid var(--gold);
+  font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+}
+.vid-ident{color:var(--gold);flex:1}
+.vid-rec-badge{
+  padding:.18rem .55rem;border-radius:2px;font-size:.62rem;font-weight:700;
+  letter-spacing:.1em;border:1px solid;
+}
+.vid-rec-badge.recording{background:#3a0000;border-color:var(--red);color:var(--red);animation:pulse .7s infinite}
+.vid-rec-badge.idle     {background:#0d1928;border-color:var(--dim);color:var(--dim)}
+.vid-main{display:flex;gap:.6rem;flex-wrap:wrap}
+.vid-feed-wrap{
+  flex:2;min-width:280px;position:relative;
+  border:2px solid var(--border);background:#000;
+}
+.vid-frame-border{
+  position:absolute;inset:0;pointer-events:none;z-index:2;
+  border:1px solid #1a3a5c;
+}
+/* corner tick marks */
+.vid-frame-border::before,.vid-frame-border::after{
+  content:'';position:absolute;background:var(--gold);
+}
+.vid-frame-border::before{width:20px;height:2px;top:6px;left:6px;
+  box-shadow:calc(100% - 12px) 0 0 var(--gold), 0 10px 0 2px var(--gold),
+             calc(100% - 12px) 10px 0 2px var(--gold);}
+.vid-feed-img{display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#000}
+.vid-no-feed{
+  width:100%;aspect-ratio:16/9;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;background:#020912;
+  color:var(--dim);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;
+  border:1px dashed #1a3050;gap:.5rem;
+}
+.vid-no-feed .big{font-size:1.1rem;color:#1a3a5c;letter-spacing:.2em}
+.vid-scanline{
+  position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(
+    0deg,rgba(0,0,0,.08) 0px,rgba(0,0,0,.08) 1px,transparent 1px,transparent 3px);
+}
+/* Telem side panels */
+.vid-telem{
+  flex:0 0 200px;min-width:160px;display:flex;flex-direction:column;gap:.4rem;
+}
+.vid-tel-card{
+  background:#040e20;border:1px solid #1a3050;padding:.4rem .5rem;
+}
+.vid-tel-title{
+  font-size:.56rem;color:var(--gold);font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;border-bottom:1px solid #1a3050;padding-bottom:.2rem;margin-bottom:.3rem;
+}
+.vid-tel-grid{display:grid;grid-template-columns:auto 1fr;gap:.06rem .35rem;font-size:.66rem}
+.vtl{color:var(--dim);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.vtv{color:var(--cyan);font-weight:700;text-align:right}
+.vtv.good{color:var(--green)} .vtv.warn{color:var(--amber)} .vtv.bad{color:var(--red)}
+/* Bottom bar: messages + controls */
+.vid-bottom{display:flex;gap:.6rem;flex-wrap:wrap}
+.vid-msg-panel{
+  flex:2;min-width:260px;background:#040e20;border:1px solid #1a3050;padding:.5rem .6rem;
+}
+.vid-msg-title{font-size:.6rem;color:var(--gold);font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:.35rem}
+.vid-msg-log{font-size:.65rem;color:var(--fg);max-height:100px;overflow-y:auto;
+  margin-bottom:.35rem;font-family:"Courier New",monospace}
+.vid-msg-log div{padding:.06rem 0;border-bottom:1px solid #0d1928}
+.vid-msg-input{display:flex;gap:.3rem}
+.vid-msg-input input{
+  flex:1;background:#020d1a;border:1px solid var(--border);color:var(--cyan);
+  padding:.3rem .45rem;font-family:inherit;font-size:.72rem;min-width:0;
+}
+.vid-msg-input button{
+  flex:0;white-space:nowrap;padding:.3rem .7rem;font-size:.65rem;background:var(--gold);
+  color:#1a0800;border:none;font-family:inherit;font-weight:700;cursor:pointer;
+}
+.vid-ctrl-panel{
+  flex:1;min-width:160px;background:#040e20;border:1px solid #1a3050;
+  padding:.5rem .6rem;display:flex;flex-direction:column;gap:.35rem;
+}
+.vid-ctrl-title{font-size:.6rem;color:var(--gold);font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:.1rem}
+.vid-ctrl-panel button{
+  width:100%;padding:.38rem .5rem;font-size:.68rem;font-weight:700;
+  font-family:inherit;cursor:pointer;letter-spacing:.08em;border:1px solid;
+  text-transform:uppercase;
+}
+/* Video file list */
+.vid-files{background:#040e20;border:1px solid #1a3050;padding:.5rem .6rem;margin-top:.2rem}
+.vid-files-title{font-size:.6rem;color:var(--gold);font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:.35rem;display:flex;align-items:center;gap:.5rem}
+</style>
+
+<div class="vid-shell">
+
+  <!-- Header bar -->
+  <div class="vid-header">
+    <span class="vid-ident">PATRICK BLACKETT  //  SILO 2  //  VIDEO FEED</span>
+    <span id="vid-rec-badge" class="vid-rec-badge idle">● STANDBY</span>
+    <span id="vid-cam-status" style="font-size:.6rem;color:var(--dim);letter-spacing:.06em">NO CAMERA</span>
+  </div>
+
+  <!-- Main layout: feed + right telem -->
+  <div class="vid-main">
+
+    <!-- Video feed -->
+    <div class="vid-feed-wrap">
+      <div class="vid-scanline"></div>
+      <div class="vid-frame-border"></div>
+      <div id="vid-no-feed" class="vid-no-feed">
+        <div class="big">◈ NO LIVE FEED ◈</div>
+        <div>CAMERA NOT DETECTED</div>
+        <div id="vid-no-feed-sub" style="font-size:.6rem;color:#1a3a5c;margin-top:.3rem">
+          Connect a Pi camera and restart the service
+        </div>
+      </div>
+      <img id="vid-img" class="vid-feed-img" style="display:none" alt="Live feed">
+    </div>
+
+    <!-- Telem side panel -->
+    <div class="vid-telem">
+      <div class="vid-tel-card">
+        <div class="vid-tel-title">Navigation</div>
+        <div class="vid-tel-grid">
+          <span class="vtl">GPS</span>  <span class="vtv" id="vt-fix">—</span>
+          <span class="vtl">Lat</span>  <span class="vtv" id="vt-lat">—</span>
+          <span class="vtl">Lon</span>  <span class="vtv" id="vt-lon">—</span>
+          <span class="vtl">Alt</span>  <span class="vtv" id="vt-alt">—</span>
+          <span class="vtl">Sats</span> <span class="vtv" id="vt-sats">—</span>
+        </div>
+      </div>
+      <div class="vid-tel-card">
+        <div class="vid-tel-title">Dynamics</div>
+        <div class="vid-tel-grid">
+          <span class="vtl">Spd</span>  <span class="vtv" id="vt-spd">—</span>
+          <span class="vtl">COG</span>  <span class="vtv" id="vt-cog">—</span>
+          <span class="vtl">Pitch</span><span class="vtv" id="vt-pitch">—</span>
+          <span class="vtl">Roll</span> <span class="vtv" id="vt-roll">—</span>
+        </div>
+      </div>
+      <div class="vid-tel-card">
+        <div class="vid-tel-title">Silo</div>
+        <div class="vid-tel-grid">
+          <span class="vtl">State</span><span class="vtv" id="vt-silo">—</span>
+          <span class="vtl">UTC</span>  <span class="vtv" id="vt-utc" style="font-size:.62rem">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom: message log + controls -->
+  <div class="vid-bottom">
+
+    <div class="vid-msg-panel">
+      <div class="vid-msg-title">Status Messages (burned into recording)</div>
+      <div class="vid-msg-log" id="vid-msg-log">
+        <div style="color:var(--dim)">No messages yet</div>
+      </div>
+      <div class="vid-msg-input">
+        <input id="vid-msg-input" type="text" maxlength="120"
+               placeholder="Enter status message…"
+               onkeydown="if(event.key==='Enter')vidSendMsg()">
+        <button onclick="vidSendMsg()">SEND</button>
+      </div>
+    </div>
+
+    <div class="vid-ctrl-panel">
+      <div class="vid-ctrl-title">Controls</div>
+      <button id="vid-snap-btn"
+              style="background:#0d2040;color:var(--cyan);border-color:var(--cyan)"
+              onclick="vidSnapshot()">📷 SNAPSHOT</button>
+      <button id="vid-rec-start-btn"
+              style="background:#0d2a0d;color:var(--green);border-color:var(--green)"
+              onclick="vidRecStart()">⏺ REC START</button>
+      <button id="vid-rec-stop-btn"
+              style="background:#2a0d0d;color:var(--red);border-color:var(--red);display:none"
+              onclick="vidRecStop()">⏹ REC STOP</button>
+      <div id="vid-ctrl-note" style="font-size:.62rem;color:var(--dim);margin-top:.2rem;line-height:1.4">
+        Recording starts automatically when silo opens.
+      </div>
+    </div>
+  </div>
+
+  <!-- Saved video list -->
+  <div class="vid-files">
+    <div class="vid-files-title">
+      Saved Videos
+      <button class="btn-sm" onclick="loadVideoList()">↺</button>
+      <span id="vid-file-count" style="color:var(--dim);font-size:.62rem;font-weight:normal;letter-spacing:0;margin-left:auto"></span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="stat-table" style="font-size:.68rem">
+        <thead><tr>
+          <th style="text-align:left">Filename</th>
+          <th>Size</th>
+          <th>Date (UTC)</th>
+          <th>Download</th>
+        </tr></thead>
+        <tbody id="vid-file-body">
+          <tr><td colspan="4" style="color:var(--dim);text-align:center;padding:.5rem">
+            No recordings found</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</div><!-- /video -->
+
+<!-- ══════════════════ API DOCS TAB ══════════════════ -->
+<div id="tab-docs" class="tab-panel">
+<div class="hist-panel">
+<style>
+.doc-card{background:#061220;border:1px solid var(--border);border-radius:4px;padding:.9rem 1rem;margin-bottom:.8rem}
+.doc-h{font-size:.8rem;font-weight:700;color:var(--gold);margin-bottom:.6rem;letter-spacing:.05em}
+.doc-sub{font-size:.72rem;font-weight:700;color:var(--white);margin:.7rem 0 .25rem}
+.doc-row{display:grid;grid-template-columns:120px 1fr;gap:.15rem .6rem;font-size:.7rem;margin-bottom:.3rem}
+.doc-label{color:var(--dim);text-transform:uppercase;letter-spacing:.06em;padding-top:.05rem}
+.doc-code{background:#020d1a;border:1px solid #1a3050;border-radius:3px;padding:.35rem .55rem;
+  font-family:'Courier New',monospace;font-size:.67rem;color:var(--cyan);
+  white-space:pre;overflow-x:auto;margin:.15rem 0 .5rem;line-height:1.6}
+.doc-note{font-size:.63rem;color:var(--dim);margin:.15rem 0 .4rem;line-height:1.5}
+.doc-resp{font-family:'Courier New',monospace;font-size:.65rem;color:var(--green);
+  background:#020d1a;border:1px solid #0d2010;border-radius:3px;padding:.35rem .55rem;
+  white-space:pre;overflow-x:auto;margin:.15rem 0}
+.copy-btn{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);
+  font-size:.6rem;font-family:inherit;font-weight:700;padding:.2rem .5rem;
+  background:#0d2040;border:1px solid var(--border);color:var(--dim);
+  border-radius:2px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.copy-btn:hover{background:#1a3a60;color:var(--white)}
+.copy-btn.copied{background:#0d3020;border-color:var(--green);color:var(--green)}
+</style>
+
+<div id="docs-ip-note" style="font-size:.7rem;color:var(--amber);margin-bottom:.8rem">
+  ⬤ Replace <code style="color:var(--cyan)">PI_IP</code> with the Pi's IP address shown in the header.
+</div>
+
+<!-- HTTP: Silo control -->
+<div class="doc-card">
+  <div class="doc-h">HTTP — Silo Control</div>
+  <p class="doc-note">Commands shown as curl. No authentication required. Responses are JSON.</p>
+
+  <div class="doc-sub">Open Silo</div>
+  <div class="doc-code" id="doc-open"></div>
+  <div class="doc-note">Extends the actuator to fully open position. Returns immediately; motion takes ~10 s.</div>
+  <div class="doc-resp">{"ok": true, "state": "OPENING"}</div>
+
+  <div class="doc-sub">Close Silo</div>
+  <div class="doc-code" id="doc-close"></div>
+  <div class="doc-note">Retracts the actuator to fully closed position.</div>
+  <div class="doc-resp">{"ok": true, "state": "CLOSING"}</div>
+
+  <div class="doc-sub">Check Status</div>
+  <div class="doc-code" id="doc-status"></div>
+  <div class="doc-note">Returns current state and whether a recording is active.</div>
+  <div class="doc-resp">{"state": "OPEN", "recording": true, "uptime_s": 3612}</div>
+  <div class="doc-note">Possible <code>state</code> values: <code>OPEN</code> · <code>CLOSED</code> · <code>OPENING</code> · <code>CLOSING</code> · <code>UNKNOWN</code></div>
+
+  <div class="doc-sub">Start / Stop Recording</div>
+  <div class="doc-code" id="doc-rec-start"></div>
+  <div class="doc-code" id="doc-rec-stop"></div>
+</div>
+
+<!-- HTTP: Read-only -->
+<div class="doc-card">
+  <div class="doc-h">HTTP — Read-only Queries</div>
+
+  <div class="doc-sub">Live Telemetry (single snapshot)</div>
+  <div class="doc-code" id="doc-telem"></div>
+  <div class="doc-resp">{"lat": 50.7832, "lon": -1.1024, "alt_m": 2.1, "heading_deg": 214.3,
+ "groundspeed": 0.0, "pitch_deg": 1.2, "roll_deg": 0.3,
+ "gps_fix": 3, "satellites": 12, "hdop": 0.92, "valid": true}</div>
+
+  <div class="doc-sub">Server-Sent Events stream (live push)</div>
+  <div class="doc-code" id="doc-sse"></div>
+  <div class="doc-note">The browser uses this to receive <code>state</code>, <code>telemetry</code>, <code>recording</code>, and <code>heartbeat</code> events as they happen. Connect with <code>EventSource</code> in JavaScript or any SSE client.</div>
+</div>
+
+<!-- MQTT -->
+<div class="doc-card">
+  <div class="doc-h">MQTT</div>
+  <p class="doc-note">Broker runs on the Pi at port 1883. No authentication. Retain flag is set on state messages.</p>
+
+  <div class="doc-sub">Open Silo</div>
+  <div class="doc-row"><span class="doc-label">Publish to</span><span></span></div>
+  <div class="doc-code" id="doc-mqtt-open-topic"></div>
+  <div class="doc-row"><span class="doc-label">Payload</span><span></span></div>
+  <div class="doc-code">OPEN</div>
+  <div class="doc-note">Any case accepted: <code>open</code>, <code>OPEN</code>, <code>Open</code></div>
+
+  <div class="doc-sub">Close Silo</div>
+  <div class="doc-code" id="doc-mqtt-close-topic"></div>
+  <div class="doc-code">CLOSE</div>
+
+  <div class="doc-sub">Read Current State</div>
+  <div class="doc-row"><span class="doc-label">Subscribe to</span><span></span></div>
+  <div class="doc-code" id="doc-mqtt-state-topic"></div>
+  <div class="doc-note">The broker retains the last state. Subscribing immediately delivers the current value.</div>
+  <div class="doc-resp">OPEN</div>
+
+  <div class="doc-sub">Post a Status Message (overlaid on video)</div>
+  <div class="doc-row"><span class="doc-label">Publish to</span><span></span></div>
+  <div class="doc-code">silo/message</div>
+  <div class="doc-code" id="doc-mqtt-cli-msg"></div>
+  <div class="doc-note">Any text payload. Appears on the video overlay (last 3 shown) and in the Video tab message log. Use this to annotate key moments during a recording — e.g. "TORPEDO DOOR OPEN", "ENGINE START".</div>
+
+  <div class="doc-sub">Subscribe to Silo Events</div>
+  <div class="doc-row"><span class="doc-label">Subscribe to</span><span></span></div>
+  <div class="doc-code">silo/event</div>
+  <div class="doc-code" id="doc-mqtt-cli-event"></div>
+  <div class="doc-note">Published (non-retained) on every silo state transition. Payload is JSON.</div>
+  <div class="doc-resp">{"event": "opening", "ts": "2026-04-12T03:11:00Z", "source": "web"}</div>
+
+  <div class="doc-sub">Command-line examples (mosquitto_pub / mosquitto_sub)</div>
+  <div class="doc-code" id="doc-mqtt-cli-open"></div>
+  <div class="doc-code" id="doc-mqtt-cli-close"></div>
+  <div class="doc-code" id="doc-mqtt-cli-sub"></div>
+</div>
+
+<!-- HTTP: Camera / Message -->
+<div class="doc-card">
+  <div class="doc-h">HTTP — Camera &amp; Status Messages</div>
+  <p class="doc-note">Post messages via HTTP to annotate recordings. Messages are burned into the video overlay and logged in the Video tab.</p>
+
+  <div class="doc-sub">Post a Status Message</div>
+  <div class="doc-code" id="doc-cam-msg"></div>
+  <div class="doc-note">Payload: <code>{"message": "your text here"}</code>. Max 120 chars.</div>
+  <div class="doc-resp">{"ok": true, "ts": "03:11:00"}</div>
+
+  <div class="doc-sub">List Messages</div>
+  <div class="doc-code" id="doc-cam-msgs"></div>
+
+  <div class="doc-sub">Live Camera Stream (MJPEG)</div>
+  <div class="doc-code" id="doc-cam-stream"></div>
+  <div class="doc-note">Open in a browser or VLC. Includes telem overlay (time, speed, pitch, roll, COG, GPS). No auth required.</div>
+
+  <div class="doc-sub">Snapshot</div>
+  <div class="doc-code" id="doc-cam-snap"></div>
+  <div class="doc-note">Returns a JPEG. 204 No Content if no camera detected.</div>
+
+  <div class="doc-sub">Manual Record Start / Stop</div>
+  <div class="doc-code" id="doc-cam-rec-start"></div>
+  <div class="doc-code" id="doc-cam-rec-stop"></div>
+  <div class="doc-note">Recording starts automatically on silo open and stops 2 s after close — these endpoints allow manual override.</div>
+</div>
+
+<!-- Hardware / GPIO -->
+<div class="doc-card">
+  <div class="doc-h">Hardware — GPIO Wiring</div>
+  <p class="doc-note">All pin numbers are BCM (Broadcom) numbering as used by gpiozero.</p>
+  <table class="diag-table" style="margin-bottom:.6rem">
+    <tr><td>Pi GPIO 17</td><td style="color:var(--green);font-weight:700">→ DR25E01 T (Trigger)</td></tr>
+    <tr><td>Pi 5 V pin</td><td>→ DR25E01 V (coil power)</td></tr>
+    <tr><td>Pi GND</td><td>→ DR25E01 G (ground)</td></tr>
+    <tr><td>Relay Module</td><td>Eletechsup DR25E01 — 3A 1-ch bistable DPDT, 5 V logic</td></tr>
+    <tr><td>Actuator</td><td>Linak LA 121P00  12 V DC linear actuator</td></tr>
+    <tr><td>Relay OUT+/OUT−</td><td>→ Actuator motor terminals</td></tr>
+    <tr><td>12 V supply</td><td>→ Relay motor power input (separate from logic)</td></tr>
+    <tr><td>Pulse width</td><td>100 ms (PULSE_MS in core/silo.py)</td></tr>
+    <tr><td>Travel time</td><td>12 s safety ceiling (core/silo.py TRAVEL_TIME)</td></tr>
+  </table>
+  <div class="doc-note">The relay is <strong>bistable toggle</strong> — each 100 ms pulse on T flips it to the opposite position and it holds there with no power.
+The software tracks which position the relay is in so it only pulses when a direction change is needed.
+The Linak internal limit switches stop the motor at both ends; TRAVEL_TIME is a backup.
+<br>If open/close are backwards, swap OUT+/OUT− on the actuator terminals, or set <code>RELAY_STARTS_OPEN = True</code> in core/silo.py.</div>
+
+  <div class="doc-sub" style="margin-top:.7rem">Operation</div>
+  <table class="stat-table" style="max-width:380px">
+    <thead><tr><th>Action</th><th>GPIO 17 (T)</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Open (if closed)</td><td style="color:var(--green)">100 ms pulse</td><td>Relay toggles → extends</td></tr>
+      <tr><td>Close (if open)</td><td style="color:var(--red)">100 ms pulse</td><td>Relay toggles → retracts</td></tr>
+      <tr><td>Already correct</td><td>No pulse</td><td>Relay unchanged</td></tr>
+      <tr><td>Idle</td><td>LOW</td><td>Relay holds latched state</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+</div><!-- /docs -->
+
+<!-- ══════════════════ OVERLAYS ══════════════════ -->
+
+<!-- Map fullscreen overlay -->
+<div class="overlay" id="map-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-bar">
+      <span class="overlay-title">Track — English Channel</span>
+      <button class="btn-sm" onclick="mapResetView()">Reset</button>
+      <button class="btn-sm" onclick="mapZoomIn()">＋</button>
+      <button class="btn-sm" onclick="mapZoomOut()">－</button>
+      <button class="btn-sm" onclick="closeOverlay('map-overlay')">✕ Close</button>
+    </div>
+    <canvas id="map-canvas-fs" style="flex:1;display:block;cursor:grab;width:100%;height:100%"></canvas>
+  </div>
+</div>
+
+<!-- Chart fullscreen overlay -->
+<div class="overlay" id="chart-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-bar">
+      <span class="overlay-title" id="chart-fs-title">Chart</span>
+      <button class="btn-sm" onclick="chartFsZoomReset()">Reset</button>
+      <button class="btn-sm" onclick="closeOverlay('chart-overlay')">✕ Close</button>
+    </div>
+    <canvas id="chart-fs-canvas" style="flex:1;display:block;width:100%;height:100%"></canvas>
+  </div>
+</div>
+
+<div class="log" id="log"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// Utilities
+// ══════════════════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+function addLog(msg){
+  const p=document.createElement('p');
+  p.textContent=new Date().toLocaleTimeString()+' '+msg;
+  $('log').prepend(p);
+  while($('log').children.length>30)$('log').removeChild($('log').lastChild);
+}
+function fmtHMS(s){
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  $(('tab-'+name)).classList.add('active');
+  btn.classList.add('active');
+  if(name==='history') loadHistory();
+  if(name==='docs') renderDocs();
+  if(name==='config') loadConfigState();
+  if(name==='video') initVideoTab();
+}
+
+// ── Overlay helpers ───────────────────────────────────────────────────────────
+function closeOverlay(id){$(id).classList.remove('active')}
+
+// ── Build stats table ─────────────────────────────────────────────────────────
+const METRICS=[
+  ['speed',      'SPEED (kt)'],
+  ['pitch',      'PITCH (°)'],
+  ['pitch_rate', 'PITCH RT (°/s)'],
+  ['roll',       'ROLL (°)'],
+  ['roll_rate',  'ROLL RT (°/s)'],
+  ['yaw_rate',   'YAW RT (°/s)'],
+];
+const WINS=['1m','5m','10m','30m'];
+
+const tbody=$('stat-body');
+METRICS.forEach(([key,label])=>{
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td class="metric">${label}</td>`+
+    `<td class="cur" id="s-${key}-cur">—</td>`+
+    WINS.map(w=>`<td class="win" id="s-${key}-${w}">—</td>`).join('');
+  tbody.appendChild(tr);
+});
+
+function applyStats(s){
+  if(!s)return;
+  METRICS.forEach(([key])=>{
+    const cur=s.current;
+    if(cur&&cur[key]!==undefined)$(`s-${key}-cur`).textContent=cur[key].toFixed(1);
+    WINS.forEach(w=>{
+      const d=s[w]&&s[w][key];
+      if(d)$(`s-${key}-${w}`).textContent=
+        d.min.toFixed(1)+'/'+d.avg.toFixed(1)+'/'+d.max.toFixed(1);
+    });
+  });
+}
+
+// ── Silo ──────────────────────────────────────────────────────────────────────
+const FIX_STR={0:'NO FIX',1:'NO FIX',2:'2D',3:'3D',6:'RTK'};
+function applySiloState(state){
+  $('silo-dot').className='dot '+state;
+  $('state-label').textContent=state.toUpperCase();
+  $('btn-open').disabled =state==='open'  ||state==='opening';
+  $('btn-close').disabled=state==='closed'||state==='closing';
+}
+async function siloCmd(action){
+  $('btn-open').disabled=$('btn-close').disabled=true;
+  try{const r=await fetch('/api/'+action,{method:'POST'});
+      const d=await r.json();if(!d.ok)addLog('REJECTED:'+(d.reason||'?'));}
+  catch(e){addLog('ERR:'+e.message);}
+}
+
+// ── Recording ─────────────────────────────────────────────────────────────────
+function applyRecording(active){
+  $('rec-dot').className=active?'dot active':'dot idle';
+  $('rec-label').textContent=active?'ACTIVE':'IDLE';
+  $('btn-start').disabled=active;$('btn-stop').disabled=!active;
+}
+async function recCmd(action){
+  try{const r=await fetch('/api/record/'+action,{method:'POST'});
+      const d=await r.json();if(!d.ok)addLog('REJECTED:'+(d.reason||'?'));}
+  catch(e){addLog('ERR:'+e.message);}
+}
+
+// ── Telemetry ─────────────────────────────────────────────────────────────────
+function applyTelemetry(t){
+  if(!t.valid)return;
+  const kts=(t.groundspeed*1.94384).toFixed(2);
+  const fix=(FIX_STR[t.gps_fix]||'FIX?')+' '+t.satellites+'sat';
+  $('n-lat').textContent=(t.lat>=0?'+':'')+t.lat.toFixed(5)+'°';
+  $('n-lon').textContent=(t.lon>=0?'+':'')+t.lon.toFixed(5)+'°';
+  $('n-alt').textContent=t.alt_m.toFixed(1)+' m';
+  $('n-gps').textContent=fix;
+  $('n-cog').textContent=t.heading_deg.toFixed(1)+'°';
+  $('n-spd').textContent=kts+' kt';
+  $('n-pitch').textContent=(t.pitch_deg>=0?'+':'')+t.pitch_deg.toFixed(1)+'°';
+  $('n-roll').textContent=(t.roll_deg>=0?'+':'')+t.roll_deg.toFixed(1)+'°';
+  $('g-fix').textContent=FIX_STR[t.gps_fix]||('FIX '+t.gps_fix);
+  $('g-sats').textContent=t.satellites;
+  if(t.hdop!==undefined&&t.hdop<99)$('g-hdop').textContent=t.hdop.toFixed(2);
+  if(t.vdop!==undefined&&t.vdop<99)$('g-vdop').textContent=t.vdop.toFixed(2);
+  if(t.h_acc!==undefined&&t.h_acc>0)$('g-hacc').textContent=t.h_acc.toFixed(1)+' m';
+  if(t.v_acc!==undefined&&t.v_acc>0)$('g-vacc').textContent=t.v_acc.toFixed(1)+' m';
+  if(t.radio_rssi!==null&&t.radio_rssi!==undefined&&t.radio_rssi!==255){
+    const pct=Math.round(t.radio_rssi/254*100);
+    const el=$('l-rssi');el.textContent=t.radio_rssi+' ('+pct+'%)';
+    el.style.color=pct>60?'var(--green)':pct>30?'var(--amber)':'var(--red)';
+  }
+  if(t.mlrs_lq_pct!==null&&t.mlrs_lq_pct!==undefined){
+    const el=$('l-lq');el.textContent=t.mlrs_lq_pct+'%';
+    el.style.color=t.mlrs_lq_pct>80?'var(--green)':t.mlrs_lq_pct>50?'var(--amber)':'var(--red)';
+  }
+  drawMotion(t.pitch_deg,t.roll_deg);
+  drawCompass(t.yaw_deg!==undefined?t.yaw_deg:t.heading_deg);
+  if(t.stats)applyStats(t.stats);
+}
+
+// ── Heartbeat / system info ───────────────────────────────────────────────────
+function applyHeartbeat(d){
+  if(d.sw_uptime_s!==undefined)$('sw-uptime').textContent=fmtHMS(d.sw_uptime_s);
+  if(d.hw_uptime_s!==undefined)$('hw-uptime').textContent=fmtHMS(d.hw_uptime_s);
+  if(d.utc)$('utc-time').textContent=d.utc;
+  if(d.ip&&d.ip!=='—')$('pi-ip').textContent=d.ip;
+  // Legacy field
+  if(d.uptime_s!==undefined&&d.sw_uptime_s===undefined)
+    $('sw-uptime').textContent=fmtHMS(d.uptime_s);
+}
+
+// Fetch real IP immediately on load
+fetch('/api/system').then(r=>r.json()).then(d=>{
+  if(d.ip)$('pi-ip').textContent=d.ip;
+  if(d.sw_uptime_s)$('sw-uptime').textContent=fmtHMS(d.sw_uptime_s);
+  if(d.hw_uptime_s)$('hw-uptime').textContent=fmtHMS(d.hw_uptime_s);
+  if(d.utc)$('utc-time').textContent=d.utc;
+}).catch(()=>{});
+
+// Local UTC clock tick (updates every second between SSE heartbeats)
+function tickUTC(){
+  const now=new Date();
+  $('utc-time').textContent=
+    String(now.getUTCHours()).padStart(2,'0')+':'+
+    String(now.getUTCMinutes()).padStart(2,'0')+':'+
+    String(now.getUTCSeconds()).padStart(2,'0');
+  setTimeout(tickUTC,1000);
+}
+tickUTC();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Motion + Compass widgets
+// ══════════════════════════════════════════════════════════════════════════════
+const attCtx=$('att-canvas').getContext('2d');
+const AW=110,AH=110,AR=52;
+function drawMotion(pitch,roll){
+  const cx=AW/2,cy=AH/2,r=AR,rr=roll*Math.PI/180;
+  const pp=Math.max(Math.min(pitch*r/45,r),-r);
+  const hcx=cx+Math.sin(rr)*pp,hcy=cy+Math.cos(rr)*pp;
+  attCtx.clearRect(0,0,AW,AH);
+  attCtx.save();
+  attCtx.beginPath();attCtx.arc(cx,cy,r,0,Math.PI*2);attCtx.clip();
+  attCtx.fillStyle='#0a1e3a';attCtx.fillRect(0,0,AW,AH);
+  attCtx.save();attCtx.translate(hcx,hcy);attCtx.rotate(rr);
+  attCtx.fillStyle='#0a2a2a';attCtx.fillRect(-AW*2,0,AW*4,AH*4);
+  attCtx.restore();
+  attCtx.strokeStyle='#00c8f0';attCtx.lineWidth=1.5;
+  const ext=r+4;
+  attCtx.beginPath();
+  attCtx.moveTo(hcx-ext*Math.cos(rr),hcy-ext*Math.sin(rr));
+  attCtx.lineTo(hcx+ext*Math.cos(rr),hcy+ext*Math.sin(rr));
+  attCtx.stroke();
+  attCtx.restore();
+  attCtx.strokeStyle='#c89b2a';attCtx.lineWidth=1.5;
+  attCtx.beginPath();attCtx.arc(cx,cy,r,0,Math.PI*2);attCtx.stroke();
+  attCtx.strokeStyle='#c89b2a';attCtx.lineWidth=2;
+  attCtx.beginPath();
+  attCtx.moveTo(cx-24,cy);attCtx.lineTo(cx-7,cy);
+  attCtx.moveTo(cx+7,cy);attCtx.lineTo(cx+24,cy);attCtx.stroke();
+  attCtx.fillStyle='#c89b2a';
+  attCtx.beginPath();attCtx.arc(cx,cy,3,0,Math.PI*2);attCtx.fill();
+  const ta=-rr-Math.PI/2,ir=r-6,tx=cx+ir*Math.cos(ta),ty=cy+ir*Math.sin(ta),pa=ta+Math.PI/2;
+  attCtx.beginPath();
+  attCtx.moveTo(tx,ty);
+  attCtx.lineTo(tx+5*Math.cos(pa),ty+5*Math.sin(pa));
+  attCtx.lineTo(tx-5*Math.cos(pa),ty-5*Math.sin(pa));
+  attCtx.closePath();attCtx.fill();
+}
+const cmpCtx=$('cmp-canvas').getContext('2d');
+const CW=110;
+function drawCompass(hdg){
+  const cx=CW/2,cy=CW/2,r=cx-4;
+  cmpCtx.clearRect(0,0,CW,CW);
+  cmpCtx.fillStyle='#040c18';cmpCtx.strokeStyle='#c89b2a';cmpCtx.lineWidth=1.5;
+  cmpCtx.beginPath();cmpCtx.arc(cx,cy,r,0,Math.PI*2);cmpCtx.fill();cmpCtx.stroke();
+  cmpCtx.fillStyle='#c89b2a';cmpCtx.font='bold 8px Courier New';
+  cmpCtx.textAlign='center';cmpCtx.textBaseline='middle';
+  [['N',0],['E',90],['S',180],['W',270]].forEach(([l,d])=>{
+    const a=(d-90)*Math.PI/180;
+    cmpCtx.fillText(l,cx+(r-12)*Math.cos(a),cy+(r-12)*Math.sin(a));
+  });
+  cmpCtx.strokeStyle='#1a3a5c';cmpCtx.lineWidth=1;
+  for(let d=0;d<360;d+=30){
+    const a=(d-90)*Math.PI/180,ln=d%90===0?9:5;
+    cmpCtx.beginPath();
+    cmpCtx.moveTo(cx+(r-ln)*Math.cos(a),cy+(r-ln)*Math.sin(a));
+    cmpCtx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));cmpCtx.stroke();
+  }
+  const a=(hdg-90)*Math.PI/180,pa=a+Math.PI/2;
+  const tip=[cx+(r-17)*Math.cos(a),cy+(r-17)*Math.sin(a)];
+  const bas=[cx-9*Math.cos(a),cy-9*Math.sin(a)];
+  cmpCtx.fillStyle='#00c8f0';
+  cmpCtx.beginPath();cmpCtx.moveTo(...tip);
+  cmpCtx.lineTo(bas[0]-5*Math.cos(pa),bas[1]-5*Math.sin(pa));
+  cmpCtx.lineTo(bas[0]+5*Math.cos(pa),bas[1]+5*Math.sin(pa));
+  cmpCtx.closePath();cmpCtx.fill();
+  cmpCtx.fillStyle='#e0f0ff';cmpCtx.font='bold 8px Courier New';
+  cmpCtx.textAlign='center';cmpCtx.textBaseline='middle';
+  cmpCtx.fillText(hdg.toFixed(0)+'°',cx,cy+2);
+}
+drawMotion(0,0);drawCompass(0);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Line chart helper (with zoom + pan on time axis)
+// ══════════════════════════════════════════════════════════════════════════════
+class LineChart {
+  constructor(canvas, opts={}){
+    this.canvas=canvas;
+    this.ctx=canvas.getContext('2d');
+    this.opts=opts;          // {color, yMin, yMax, zeroLine}
+    this.data=[];            // [{ts_unix, value}]
+    this.zoomStart=0;        // fraction 0-1 of window start
+    this.zoomEnd  =1;        // fraction 0-1 of window end
+    this.dragging =false;
+    this.dragX    =null;
+    this._bindEvents();
+  }
+  setData(rows, key){
+    this.data=rows.filter(r=>r[key]!=null).map(r=>({t:r.ts_unix,v:r[key]}));
+    this.zoomStart=0;this.zoomEnd=1;
+    this.draw();
+  }
+  _bindEvents(){
+    const c=this.canvas;
+    c.addEventListener('wheel',e=>{
+      e.preventDefault();
+      const rect=c.getBoundingClientRect();
+      const frac=(e.clientX-rect.left)/rect.width;
+      const span=this.zoomEnd-this.zoomStart;
+      const factor=e.deltaY<0?0.8:1.25;
+      const newSpan=Math.min(1,Math.max(0.02,span*factor));
+      const delta=newSpan-span;
+      this.zoomStart=Math.max(0,this.zoomStart-delta*frac);
+      this.zoomEnd  =Math.min(1,this.zoomEnd  +delta*(1-frac));
+      this.draw();
+    },{passive:false});
+    c.addEventListener('mousedown',e=>{this.dragging=true;this.dragX=e.clientX;});
+    c.addEventListener('mousemove',e=>{
+      if(!this.dragging)return;
+      const dx=(e.clientX-this.dragX)/c.getBoundingClientRect().width;
+      const span=this.zoomEnd-this.zoomStart;
+      const shift=-dx*span;
+      if(this.zoomStart+shift>=0&&this.zoomEnd+shift<=1){
+        this.zoomStart+=shift;this.zoomEnd+=shift;
+      }
+      this.dragX=e.clientX;this.draw();
+    });
+    c.addEventListener('mouseup',()=>this.dragging=false);
+    c.addEventListener('mouseleave',()=>this.dragging=false);
+  }
+  draw(){
+    const c=this.canvas,ctx=this.ctx;
+    const W=c.width,H=c.height;
+    // Use actual rendered size for overlay canvases
+    const dW=c.offsetWidth||W, dH=c.offsetHeight||H;
+    if(c.width!==dW&&dW>10){c.width=dW;}
+    if(c.height!==dH&&dH>10){c.height=dH;}
+    const rW=c.width,rH=c.height;
+    const PAD={t:6,r:4,b:22,l:38};
+    const iW=rW-PAD.l-PAD.r,iH=rH-PAD.t-PAD.b;
+    ctx.clearRect(0,0,rW,rH);
+    ctx.fillStyle='#040c18';ctx.fillRect(0,0,rW,rH);
+
+    if(!this.data||this.data.length<2){
+      ctx.fillStyle='#3a5a7a';ctx.font='11px Courier New';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('NO DATA',rW/2,rH/2);return;
+    }
+
+    const all=this.data;
+    const tMin=all[0].t, tMax=all[all.length-1].t;
+    const span=tMax-tMin||1;
+    const visMin=tMin+span*this.zoomStart;
+    const visMax=tMin+span*this.zoomEnd;
+    const visible=all.filter(p=>p.t>=visMin&&p.t<=visMax);
+    if(visible.length<1)return;
+
+    const vals=visible.map(p=>p.v);
+    let yMin=this.opts.yMin!==undefined?this.opts.yMin:Math.min(...vals);
+    let yMax=this.opts.yMax!==undefined?this.opts.yMax:Math.max(...vals);
+    if(yMin===yMax){yMin-=1;yMax+=1;}
+    const yPad=(yMax-yMin)*0.06;
+    if(this.opts.yMin===undefined)yMin-=yPad;
+    if(this.opts.yMax===undefined)yMax+=yPad;
+
+    const toX=t=>PAD.l+(t-visMin)/(visMax-visMin)*iW;
+    const toY=v=>PAD.t+(1-(v-yMin)/(yMax-yMin))*iH;
+    const color=this.opts.color||'#00c8f0';
+
+    // Grid
+    ctx.strokeStyle='#0d1928';ctx.lineWidth=1;
+    ctx.fillStyle='#3a5a7a';ctx.font='8px Courier New';
+    ctx.textAlign='right';ctx.textBaseline='middle';
+    for(let i=0;i<=4;i++){
+      const v=yMin+(yMax-yMin)*i/4;
+      const y=toY(v);
+      ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+iW,y);ctx.stroke();
+      ctx.fillText(v.toFixed(1),PAD.l-3,y);
+    }
+
+    // Zero line
+    if(this.opts.zeroLine&&yMin<0&&yMax>0){
+      const y=toY(0);
+      ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+iW,y);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Time ticks
+    ctx.fillStyle='#3a5a7a';ctx.font='8px Courier New';
+    ctx.textAlign='center';ctx.textBaseline='top';
+    const rangeS=visMax-visMin;
+    const tickIntervals=[10,30,60,120,300,600,1800];
+    const ti=tickIntervals.find(t=>rangeS/t<8)||1800;
+    const firstTick=Math.ceil(visMin/ti)*ti;
+    for(let t=firstTick;t<=visMax;t+=ti){
+      const x=toX(t);
+      const agoS=Math.round(tMax-t);
+      const lbl=agoS<=5?'now':(agoS<60?'-'+agoS+'s':'-'+(agoS/60).toFixed(0)+'m');
+      ctx.fillStyle='#3a5a7a';
+      ctx.beginPath();ctx.moveTo(x,PAD.t+iH);ctx.lineTo(x,PAD.t+iH+3);ctx.stroke();
+      ctx.fillText(lbl,x,PAD.t+iH+4);
+    }
+
+    // Line
+    ctx.strokeStyle=color;ctx.lineWidth=1.5;
+    ctx.beginPath();
+    visible.forEach((p,i)=>{
+      const x=toX(p.t),y=toY(p.v);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // Border
+    ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1;
+    ctx.strokeRect(PAD.l,PAD.t,iW,iH);
+  }
+}
+
+// Chart registry
+const charts={};
+const chartDefs=[
+  ['speed',  'speed_kts',  {color:'#00c8f0'}],
+  ['heading','heading_deg',{color:'#c89b2a',yMin:0,yMax:360}],
+  ['pitch',  'pitch_deg',  {color:'#00c870',zeroLine:true}],
+  ['pitchr', 'pitch_rate', {color:'#e07820'}],
+  ['roll',   'roll_deg',   {color:'#00c870',zeroLine:true}],
+  ['rollr',  'roll_rate',  {color:'#e07820'}],
+  ['yawr',   'yaw_rate',   {color:'#c83030'}],
+  ['alt',    'alt_m',      {color:'#6080a0'}],
+];
+chartDefs.forEach(([id,,opts])=>{
+  charts[id]=new LineChart($('ch-'+id),opts);
+});
+
+function openChartFS(id, title){
+  $('chart-fs-title').textContent=title;
+  const overlay=$('chart-overlay');
+  overlay.classList.add('active');
+  const fsCanvas=$('chart-fs-canvas');
+  // Give the canvas its rendered size
+  requestAnimationFrame(()=>{
+    fsCanvas.width=fsCanvas.offsetWidth;
+    fsCanvas.height=fsCanvas.offsetHeight;
+    // Copy chart opts and data to FS chart
+    const src=charts[id];
+    const fsChart=new LineChart(fsCanvas,src.opts);
+    fsChart.data=[...src.data];
+    fsChart.draw();
+    overlay._chart=fsChart;
+    overlay._srcId=id;
+  });
+}
+
+function chartFsZoomReset(){
+  const overlay=$('chart-overlay');
+  if(overlay._chart){overlay._chart.zoomStart=0;overlay._chart.zoomEnd=1;overlay._chart.draw();}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Interactive map
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Coastline data — loaded from Natural Earth 10m dataset ───────────────────
+// Fetched once at startup; all ChannelMap instances share the same array.
+let COAST_LINES = [];   // array of [[lon,lat], …] polylines
+let coastLoaded = false;
+
+async function loadCoastline(){
+  if(coastLoaded) return;
+  try{
+    const r = await fetch('/static/geo/channel_coast.json');
+    const d = await r.json();
+    COAST_LINES = d.lines || [];
+    coastLoaded = true;
+  }catch(e){
+    console.warn('Coastline load failed:', e);
+  }
+}
+
+// ── Map engine ────────────────────────────────────────────────────────────────
+class ChannelMap {
+  constructor(canvas){
+    this.canvas=canvas;
+    this.ctx=canvas.getContext('2d');
+    // Base geo bounds
+    this.geoW=-5.80; this.geoE=2.50;
+    this.geoS=48.90; this.geoN=51.80;
+    // View transform: pan offset (px) and scale
+    this.tx=0; this.ty=0; this.scale=1;
+    this.dragging=false; this.lastMouse=null;
+    this.lastTouches=null;
+    this._setupEvents();
+  }
+  // Convert geo → canvas pixel (before transform)
+  _geoBase(lon,lat){
+    const W=this.canvas.width, H=this.canvas.height;
+    return [
+      (lon-this.geoW)/(this.geoE-this.geoW)*W,
+      (1-(lat-this.geoS)/(this.geoN-this.geoS))*H,
+    ];
+  }
+  // Apply transform
+  _apply(bx,by){
+    return [bx*this.scale+this.tx, by*this.scale+this.ty];
+  }
+  geoToPixel(lon,lat){
+    return this._apply(...this._geoBase(lon,lat));
+  }
+  _setupEvents(){
+    const c=this.canvas;
+    c.addEventListener('wheel',e=>{e.preventDefault();
+      const r=c.getBoundingClientRect();
+      this._zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.25:0.8);
+      this.draw(this._lastTrack);
+    },{passive:false});
+    c.addEventListener('mousedown',e=>{this.dragging=true;this.lastMouse=[e.clientX,e.clientY];});
+    c.addEventListener('mousemove',e=>{
+      if(!this.dragging)return;
+      this.tx+=e.clientX-this.lastMouse[0];
+      this.ty+=e.clientY-this.lastMouse[1];
+      this.lastMouse=[e.clientX,e.clientY];
+      this.draw(this._lastTrack);
+    });
+    c.addEventListener('mouseup',()=>this.dragging=false);
+    c.addEventListener('mouseleave',()=>this.dragging=false);
+    c.addEventListener('dblclick',e=>{
+      const r=c.getBoundingClientRect();
+      this._zoomAt(e.clientX-r.left,e.clientY-r.top,2);
+      this.draw(this._lastTrack);
+    });
+    // Touch
+    c.addEventListener('touchstart',e=>{
+      e.preventDefault();
+      if(e.touches.length===1)this.lastMouse=[e.touches[0].clientX,e.touches[0].clientY];
+      if(e.touches.length===2)this.lastTouches=[[e.touches[0].clientX,e.touches[0].clientY],
+                                                 [e.touches[1].clientX,e.touches[1].clientY]];
+    },{passive:false});
+    c.addEventListener('touchmove',e=>{
+      e.preventDefault();
+      if(e.touches.length===1&&this.lastMouse){
+        this.tx+=e.touches[0].clientX-this.lastMouse[0];
+        this.ty+=e.touches[0].clientY-this.lastMouse[1];
+        this.lastMouse=[e.touches[0].clientX,e.touches[0].clientY];
+        this.draw(this._lastTrack);
+      }
+      if(e.touches.length===2&&this.lastTouches){
+        const t0=[e.touches[0].clientX,e.touches[0].clientY];
+        const t1=[e.touches[1].clientX,e.touches[1].clientY];
+        const d0=Math.hypot(this.lastTouches[1][0]-this.lastTouches[0][0],
+                            this.lastTouches[1][1]-this.lastTouches[0][1]);
+        const d1=Math.hypot(t1[0]-t0[0],t1[1]-t0[1]);
+        const mx=(t0[0]+t1[0])/2, my=(t0[1]+t1[1])/2;
+        const r=this.canvas.getBoundingClientRect();
+        this._zoomAt(mx-r.left,my-r.top,d1/Math.max(d0,1));
+        this.lastTouches=[t0,t1];
+        this.draw(this._lastTrack);
+      }
+    },{passive:false});
+    c.addEventListener('touchend',()=>{this.lastMouse=null;this.lastTouches=null;});
+  }
+  _zoomAt(mx,my,factor){
+    this.tx=mx-(mx-this.tx)*factor;
+    this.ty=my-(my-this.ty)*factor;
+    this.scale*=factor;
+  }
+  reset(){this.tx=0;this.ty=0;this.scale=1;}
+  zoomIn(){
+    const W=this.canvas.width,H=this.canvas.height;
+    this._zoomAt(W/2,H/2,1.4);
+  }
+  zoomOut(){
+    const W=this.canvas.width,H=this.canvas.height;
+    this._zoomAt(W/2,H/2,1/1.4);
+  }
+  _drawCoast(pts,fill){
+    const ctx=this.ctx;
+    if(!pts.length)return;
+    ctx.beginPath();
+    pts.forEach(([lon,lat],i)=>{
+      const [x,y]=this.geoToPixel(lon,lat);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    if(fill){ctx.closePath();ctx.fillStyle=fill;ctx.fill();}
+    ctx.strokeStyle='#c89b2a';ctx.lineWidth=1.5;ctx.stroke();
+  }
+  draw(trackPts){
+    this._lastTrack=trackPts;
+    const c=this.canvas,ctx=this.ctx;
+    // Resize if displayed size changed
+    const dW=c.offsetWidth||c.width,dH=c.offsetHeight||c.height;
+    if(c.width!==dW&&dW>10)c.width=dW;
+    if(c.height!==dH&&dH>10)c.height=dH;
+    const W=c.width,H=c.height;
+    ctx.clearRect(0,0,W,H);
+
+    // Sea
+    ctx.fillStyle='#040e20';ctx.fillRect(0,0,W,H);
+
+    // Lat/lon grid
+    ctx.strokeStyle='#0b1a2e';ctx.lineWidth=1;
+    ctx.fillStyle='#1a3a5c';ctx.font='9px Courier New';
+    ctx.textAlign='center';ctx.textBaseline='top';
+    for(let lon=-5;lon<=2;lon++){
+      const [x]=this.geoToPixel(lon,this.geoS);
+      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+      ctx.fillText(lon+'°',x,H-14);
+    }
+    ctx.textAlign='right';ctx.textBaseline='middle';
+    for(let lat=49;lat<=52;lat++){
+      const [,y]=this.geoToPixel(0,lat);
+      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+      ctx.fillText(lat+'°N',36,y);
+    }
+
+    // Coastlines from Natural Earth 10m dataset
+    if(COAST_LINES.length > 0){
+      ctx.strokeStyle='#c89b2a'; ctx.lineWidth=1.2;
+      COAST_LINES.forEach(line=>{
+        if(line.length<2)return;
+        ctx.beginPath();
+        line.forEach(([lon,lat],i)=>{
+          const [x,y]=this.geoToPixel(lon,lat);
+          if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        });
+        ctx.stroke();
+      });
+    } else {
+      // Fallback: simple label while loading
+      ctx.fillStyle='#3a5a7a';ctx.font='10px Courier New';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('Loading coastline…',W/2,H/2-20);
+    }
+
+    // Labels
+    ctx.fillStyle='#c89b2a';ctx.font='bold 11px Courier New';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    const [elx,ely]=this.geoToPixel(-1.0,51.05);
+    ctx.fillText('ENGLAND',elx,ely);
+    const [flx,fly]=this.geoToPixel(0.5,49.48);
+    ctx.fillText('FRANCE',flx,fly);
+    const [iowx,iowy]=this.geoToPixel(-1.28,50.668);
+    ctx.fillStyle='#8090a0';ctx.font='9px Courier New';
+    ctx.fillText('IoW',iowx,iowy);
+
+    // Track
+    const valid=(trackPts||[]).filter(([la,lo])=>la!==0||lo!==0);
+    if(valid.length>1){
+      ctx.beginPath();
+      valid.forEach(([la,lo],i)=>{
+        const [x,y]=this.geoToPixel(lo,la);
+        if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+      });
+      ctx.strokeStyle='#00c8f0';ctx.lineWidth=2;ctx.stroke();
+      // Arrows every N points
+      for(let i=10;i<valid.length;i+=Math.max(1,Math.floor(valid.length/20))){
+        const [la0,lo0]=valid[i-1],[la1,lo1]=valid[i];
+        const [x0,y0]=this.geoToPixel(lo0,la0),[x1,y1]=this.geoToPixel(lo1,la1);
+        const a=Math.atan2(y1-y0,x1-x0);
+        ctx.fillStyle='#00c8f0';
+        ctx.save();ctx.translate((x0+x1)/2,(y0+y1)/2);ctx.rotate(a);
+        ctx.beginPath();ctx.moveTo(5,0);ctx.lineTo(-3,-3);ctx.lineTo(-3,3);
+        ctx.closePath();ctx.fill();ctx.restore();
+      }
+      // Current position
+      const [cla,clo]=valid[valid.length-1];
+      const [cx,cy]=this.geoToPixel(clo,cla);
+      ctx.fillStyle='#00c870';
+      ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#e0f0ff';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle='#e0f0ff';ctx.font='9px Courier New';
+      ctx.textAlign='left';ctx.textBaseline='top';
+      ctx.fillText(cla.toFixed(4)+'N '+(clo<0?Math.abs(clo).toFixed(4)+'W':clo.toFixed(4)+'E'),cx+8,cy-4);
+    } else {
+      ctx.fillStyle='#3a5a7a';ctx.font='12px Courier New';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('NO TRACK DATA',W/2,H/2);
+    }
+    // Border
+    ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1;ctx.strokeRect(0,0,W,H);
+  }
+}
+
+// Shared map state used by both inline and fullscreen canvases
+let channelMap = new ChannelMap($('map-canvas'));
+let channelMapFS= null;
+let trackData  = [];
+
+function mapResetView(){
+  channelMap.reset();channelMap.draw(trackData);
+  if(channelMapFS){channelMapFS.reset();channelMapFS.draw(trackData);}
+}
+function mapZoomIn(){
+  channelMap.zoomIn();channelMap.draw(trackData);
+  if(channelMapFS){channelMapFS.zoomIn();channelMapFS.draw(trackData);}
+}
+function mapZoomOut(){
+  channelMap.zoomOut();channelMap.draw(trackData);
+  if(channelMapFS){channelMapFS.zoomOut();channelMapFS.draw(trackData);}
+}
+function openMapFullscreen(){
+  const overlay=$('map-overlay');
+  overlay.classList.add('active');
+  const fsc=$('map-canvas-fs');
+  requestAnimationFrame(()=>{
+    fsc.width=fsc.offsetWidth;fsc.height=fsc.offsetHeight;
+    channelMapFS=new ChannelMap(fsc);
+    channelMapFS.draw(trackData);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// History loading
+// ══════════════════════════════════════════════════════════════════════════════
+let historyData=[];
+let histRefreshTimer=null;
+
+async function loadHistory(){
+  try{
+    const [hRes,tRes]=await Promise.all([
+      fetch('/api/history?interval_s=2'),
+      fetch('/api/track'),
+    ]);
+    historyData=await hRes.json();
+    trackData  =await tRes.json();
+    renderHistory();
+  }catch(e){addLog('History fetch: '+e.message);}
+}
+
+function renderHistory(){
+  const d=historyData;
+  channelMap.draw(trackData);
+  if(channelMapFS)channelMapFS.draw(trackData);
+  chartDefs.forEach(([id,key])=>{
+    charts[id].setData(d,key);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SSE
+// ══════════════════════════════════════════════════════════════════════════════
+function connectSSE(){
+  const es=new EventSource('/api/events');
+  let _lastSiloState='';
+  es.addEventListener('state',e=>{
+    const d=JSON.parse(e.data);applySiloState(d.state);
+    _lastSiloState=d.state;
+    addLog('SILO → '+d.state.toUpperCase());
+    updateVidTelem(null, d.state);
+  });
+  es.addEventListener('telemetry',e=>{
+    const t=JSON.parse(e.data);
+    applyTelemetry(t);
+    updateVidTelem(t, _lastSiloState);
+    if($('tab-history').classList.contains('active')){
+      clearTimeout(histRefreshTimer);
+      histRefreshTimer=setTimeout(loadHistory,5000);
+    }
+  });
+  es.addEventListener('recording',e=>{
+    const d=JSON.parse(e.data);
+    applyRecording(d.active!==undefined?d.active:d.recording);
+  });
+  es.addEventListener('cam_recording',e=>{
+    const d=JSON.parse(e.data);
+    applyVidRecState(d.active);
+  });
+  es.addEventListener('heartbeat',e=>{applyHeartbeat(JSON.parse(e.data));});
+  es.onerror=()=>{
+    addLog('CONNECTION LOST — retrying…');es.close();setTimeout(connectSSE,3000);
+  };
+}
+connectSSE();
+
+// Load coastline data and redraw maps when ready
+loadCoastline().then(()=>{
+  channelMap.draw(trackData);
+  if(channelMapFS) channelMapFS.draw(trackData);
+  if(window._logMap) window._logMap.draw(window._logMap._lastTrack);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Diagnostics tab
+// ══════════════════════════════════════════════════════════════════════════════
+let diagData = {};
+
+function dtRow(label, value, cls=''){
+  return `<tr><td>${label}</td><td class="${cls}">${value!==null&&value!==undefined?value:'—'}</td></tr>`;
+}
+
+function renderDiag(d){
+  diagData=d;
+
+  // Firmware
+  const ekfOK = d.ekf_flags!==null && (d.ekf_flags & 0x1F) === 0x1F;
+  $('dt-fw').innerHTML = [
+    dtRow('Connected',   d.connected ? '✓ YES':'✗ NO', d.connected?'':'err'),
+    dtRow('Port',        `${d.port} @ ${d.baud} baud`),
+    dtRow('Sys ID',      d.sysid),
+    dtRow('Comp ID',     d.compid),
+    dtRow('Autopilot',   d.autopilot_type),
+    dtRow('Vehicle',     d.vehicle_type),
+    dtRow('FW Version',  d.fw_version),
+    dtRow('Board Ver',   d.board_version),
+    dtRow('HW UID',      d.hw_uid),
+    dtRow('Capabilities',d.capabilities),
+  ].join('');
+
+  // System status
+  const unhealthy = (d.sensors_unhealthy||[]);
+  const vBat = d.voltage_mv!==null&&d.voltage_mv!==65535 ?
+               (d.voltage_mv/1000).toFixed(2)+' V' : '—';
+  const iBat = d.current_ca!==null&&d.current_ca!==-1 ?
+               (d.current_ca/100).toFixed(2)+' A' : '—';
+  const batPct = d.battery_pct!==null&&d.battery_pct!==-1 ?
+                 d.battery_pct+'%' : '—';
+  $('dt-sys').innerHTML = [
+    dtRow('System Status', _sysStatusName(d.system_status)),
+    dtRow('Base Mode',     _baseModeStr(d.base_mode)),
+    dtRow('Voltage',       vBat),
+    dtRow('Current',       iBat),
+    dtRow('Battery',       batPct),
+    dtRow('Unhealthy', unhealthy.length?unhealthy.join(', '):'All OK',
+          unhealthy.length?'warn':''),
+  ].join('');
+
+  // EKF
+  const EKF_FLAGS={
+    0x001:'ATTITUDE', 0x002:'VEL_HORIZ', 0x004:'VEL_VERT',
+    0x008:'POS_HORIZ_REL', 0x010:'POS_HORIZ_ABS',
+    0x020:'POS_VERT_ABS',  0x040:'POS_VERT_AGL',
+    0x080:'CONST_POS_MODE',0x100:'PRED_POS_HORIZ_REL',
+    0x200:'PRED_POS_HORIZ_ABS',
+  };
+  const flags=d.ekf_flags||0;
+  const flagStr=Object.entries(EKF_FLAGS)
+    .filter(([b])=>flags&parseInt(b)).map(([,n])=>n).join(' ') || 'NONE';
+  $('dt-ekf').innerHTML=[
+    dtRow('Flags',      flagStr||'—'),
+    dtRow('Vel Var',    d.ekf_vel_var,     d.ekf_vel_var>1?'warn':''),
+    dtRow('Pos H Var',  d.ekf_pos_h_var,   d.ekf_pos_h_var>1?'warn':''),
+    dtRow('Pos V Var',  d.ekf_pos_v_var,   d.ekf_pos_v_var>1?'warn':''),
+    dtRow('Compass Var',d.ekf_compass_var, d.ekf_compass_var>1?'warn':''),
+  ].join('');
+
+  // GPS module hardware
+  renderGPSModule(d);
+
+  // GPS detail
+  const jam=d.gps_jamming!==null?d.gps_jamming:'—';
+  const jamCls=d.gps_jamming>100?'warn':d.gps_jamming>200?'err':'';
+  $('dt-gps').innerHTML=[
+    dtRow('Fix Type',   _fixName(diagData) ),
+    dtRow('Satellites', d.satellites),
+    dtRow('HDOP',       d.hdop!==99.9?Number(d.hdop).toFixed(2):'—',
+                        d.hdop>2?'warn':d.hdop>5?'err':''),
+    dtRow('VDOP',       d.vdop!==99.9?Number(d.vdop).toFixed(2):'—'),
+    dtRow('H Acc',      d.h_acc?(+d.h_acc).toFixed(1)+' m':'—'),
+    dtRow('V Acc',      d.v_acc?(+d.v_acc).toFixed(1)+' m':'—'),
+    dtRow('Noise',      d.gps_noise!==null?d.gps_noise:'—'),
+    dtRow('Jamming',    jam, jamCls),
+  ].join('');
+
+  // mLRS / Radio
+  function rssiBar(v){
+    if(v===null||v===255)return '—';
+    // RSSI 0-254: crude signal bar
+    const pct=Math.round(v/254*100);
+    const col=pct>60?'var(--green)':pct>30?'var(--amber)':'var(--red)';
+    return `<span style="color:${col}">${v} (${pct}%)</span>`;
+  }
+  const lqVal=d.mlrs_lq_pct!==null?d.mlrs_lq_pct+'%':'—';
+  const lqCol=d.mlrs_lq_pct!==null?(d.mlrs_lq_pct>80?'':'warn'):'';
+  const rssiDbm=d.mlrs_rssi_dbm!==null?d.mlrs_rssi_dbm+' dBm':'—';
+  const rxErr=d.radio_rxerrors!==null?d.radio_rxerrors:'—';
+  const fixed=d.radio_fixed!==null?d.radio_fixed:'—';
+  $('dt-radio').innerHTML=[
+    dtRow('Last update',   d.radio_ts||'—'),
+    dtRow('Local RSSI',    rssiBar(d.radio_rssi)),
+    dtRow('Remote RSSI',   rssiBar(d.radio_remrssi)),
+    dtRow('Link Quality',  lqVal, lqCol),
+    dtRow('RSSI (dBm est)',rssiDbm),
+    dtRow('TX Buffer',     d.radio_txbuf!==null?d.radio_txbuf+'%':'—'),
+    dtRow('Local Noise',   d.radio_noise!==null?d.radio_noise:'—'),
+    dtRow('Remote Noise',  d.radio_remnoise!==null?d.radio_remnoise:'—'),
+    dtRow('RX Errors',     rxErr, rxErr>0?'warn':''),
+    dtRow('FEC Repaired',  fixed),
+    dtRow('RC RSSI',       d.rc_rssi!==null&&d.rc_rssi!==255?d.rc_rssi:'—'),
+    dtRow('RC Channels',   d.rc_chan_count!==null?d.rc_chan_count:'—'),
+  ].join('');
+
+  // Battery
+  const vRaw=d.voltage_mv;
+  const iRaw=d.current_ca;
+  const pctRaw=d.battery_pct;
+  const vStr=vRaw!==null&&vRaw!==65535?(vRaw/1000).toFixed(3)+' V':'—';
+  const iStr=iRaw!==null&&iRaw!==-1?(iRaw/100).toFixed(2)+' A':'—';
+  const pStr=pctRaw!==null&&pctRaw!==-1?pctRaw+'%':'—';
+  const pCls=pctRaw<20?'err':pctRaw<40?'warn':'';
+  $('dt-batt').innerHTML=[
+    dtRow('Voltage',  vStr, vRaw!==null&&vRaw!==65535&&vRaw/1000<11?'warn':''),
+    dtRow('Current',  iStr),
+    dtRow('Remaining',pStr, pCls),
+    dtRow('Note', vRaw!==null&&vRaw!==65535&&vRaw<7000?
+      'Low V — check BATT_MONITOR':'OK'),
+  ].join('');
+
+  // Satellite table + sky plot
+  const sats=d.satellites_info||[];
+  const stbody=$('sat-body');
+  stbody.innerHTML=sats.map(s=>`<tr>
+    <td style="color:${s.used?'var(--green)':'var(--dim)'}">
+      ${s.prn}${s.used?' ●':''}</td>
+    <td>${s.elevation}°</td>
+    <td>${s.azimuth}°</td>
+    <td style="color:${s.snr>30?'var(--green)':s.snr>20?'var(--amber)':'var(--red)'}">
+      ${s.snr}</td>
+    <td>${s.used?'YES':'—'}</td>
+  </tr>`).join('');
+  drawSkyPlot(sats);
+
+  // Status log
+  const logEl=$('diag-log');
+  const SEV_COL={EMERG:'#c83030',ALERT:'#c83030',CRIT:'#c83030',
+                 ERROR:'#c83030',WARN:'#e07820',NOTE:'#c89b2a',
+                 INFO:'#c0d0e0',DEBUG:'#3a5a7a'};
+  logEl.innerHTML=(d.statustext||[]).slice().reverse().map(e=>
+    `<div style="padding:.1rem 0;border-bottom:1px solid #0d1928">
+      <span style="color:var(--dim)">${e.ts}</span>
+      <span style="color:${SEV_COL[e.sev]||'#c0d0e0'};margin:0 .4rem">[${e.sev}]</span>
+      <span>${e.text}</span>
+    </div>`
+  ).join('');
+}
+
+function _fixName(d){
+  const names={0:'No Fix',1:'No Fix',2:'2D Fix',3:'3D Fix',
+               4:'DGPS',5:'RTK Float',6:'RTK Fixed'};
+  return names[d.gps_fix]||(d.gps_fix!==undefined?'Fix '+d.gps_fix:'—');
+}
+function _sysStatusName(s){
+  return ['Uninit','Boot','Calibrating','Standby','Active',
+          'Critical','Emergency','Poweroff','Flight term'][s]||('St'+s);
+}
+function _baseModeStr(bm){
+  if(bm===null||bm===undefined)return '—';
+  const flags=[];
+  if(bm&0x80)flags.push('ARMED');
+  if(bm&0x40)flags.push('TEST');
+  if(bm&0x20)flags.push('AUTO');
+  if(bm&0x10)flags.push('GUIDED');
+  if(bm&0x08)flags.push('STABILIZE');
+  if(bm&0x04)flags.push('HIL');
+  if(bm&0x02)flags.push('MANUAL');
+  if(bm&0x01)flags.push('CUSTOM');
+  return flags.length?flags.join(' | '):'DISARMED';
+}
+
+// ── Sky plot ──────────────────────────────────────────────────────────────────
+function drawSkyPlot(sats){
+  const c=$('sky-canvas'),ctx=c.getContext('2d');
+  const W=c.width,H=c.height,cx=W/2,cy=H/2,r=W/2-8;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#040c18';ctx.fillRect(0,0,W,H);
+
+  // Rings: horizon (0°el), 30°, 60°
+  [1, 2/3, 1/3].forEach((fr,i)=>{
+    ctx.strokeStyle=i===0?'#1a3a5c':'#0d1928';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(cx,cy,r*fr,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='#1a3a5c';ctx.font='8px Courier New';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText([0,30,60][i]+'°',cx+r*fr+4,cy);
+  });
+  // Cardinal spokes
+  ctx.strokeStyle='#0d1928';ctx.lineWidth=1;
+  [0,90,180,270].forEach(d=>{
+    const a=(d-90)*Math.PI/180;
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));ctx.stroke();
+  });
+  ctx.fillStyle='#1a3a5c';ctx.font='9px Courier New';ctx.textAlign='center';
+  ctx.fillText('N',cx,cy-r-6);ctx.fillText('S',cx,cy+r+8);
+  ctx.textBaseline='middle';
+  ctx.fillText('E',cx+r+8,cy);ctx.fillText('W',cx-r-6,cy);
+
+  // Satellites
+  sats.forEach(s=>{
+    const el=Math.max(0,Math.min(90,s.elevation));
+    const az=s.azimuth*Math.PI/180;
+    const dist=r*(1-el/90);
+    const sx=cx+dist*Math.sin(az);
+    const sy=cy-dist*Math.cos(az);
+    const snrCol=s.snr>30?'#00c870':s.snr>20?'#e07820':'#c83030';
+    ctx.fillStyle=s.used?snrCol:'#3a5a7a';
+    ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fill();
+    if(s.used){ctx.strokeStyle='#e0f0ff';ctx.lineWidth=1;ctx.stroke();}
+    ctx.fillStyle='#e0f0ff';ctx.font='7px Courier New';
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText(s.prn,sx,sy+6);
+  });
+
+  // Border
+  ctx.strokeStyle='#1a3a5c';ctx.lineWidth=1;ctx.strokeRect(0,0,W,H);
+}
+
+function clearDiagLog(){$('diag-log').innerHTML='';}
+
+async function loadDiag(){
+  try{
+    const r=await fetch('/api/diagnostics');
+    const d=await r.json();
+    renderDiag(d);
+  }catch(e){addLog('Diag fetch: '+e.message);}
+}
+
+// Auto-refresh diag when tab is open
+let diagTimer=null;
+const _origShowTab=showTab;
+// Override showTab to wire up diag auto-refresh
+window.showTab=function(name,btn){
+  _origShowTab(name,btn);
+  clearInterval(diagTimer);diagTimer=null;
+  if(name==='diag'){loadDiag();diagTimer=setInterval(loadDiag,3000);}
+  if(name==='logs'){loadLogList();}
+  if(name!=='video'){leaveVideoTab();}
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Log Files tab
+// ══════════════════════════════════════════════════════════════════════════════
+let logFiles   = [];
+let logSortKey = 'modified';
+let logSortAsc = false;
+let selectedLog = null;
+
+async function loadLogList(){
+  try{
+    const r=await fetch('/api/logfiles');
+    logFiles=await r.json();
+    $('log-count').textContent=logFiles.length+' file'+(logFiles.length!==1?'s':'');
+    if(logFiles.length>0)$('log-dir-path').textContent=
+      logFiles[0].path.replace(/\/[^/]+$/,'');
+    renderLogList();
+  }catch(e){addLog('Log list: '+e.message);}
+}
+
+function sortLogs(key){
+  if(logSortKey===key)logSortAsc=!logSortAsc;
+  else{logSortKey=key;logSortAsc=false;}
+  renderLogList();
+}
+
+function renderLogList(){
+  const sorted=[...logFiles].sort((a,b)=>{
+    let av=a[logSortKey],bv=b[logSortKey];
+    if(typeof av==='string')av=av.toLowerCase(),bv=bv.toLowerCase();
+    return logSortAsc?(av<bv?-1:av>bv?1:0):(av>bv?-1:av<bv?1:0);
+  });
+  const tbody=$('log-file-body');
+  tbody.innerHTML=sorted.map(f=>`
+    <tr class="log-row${selectedLog===f.name?' selected':''}"
+        onclick="selectLog('${f.name}',this)">
+      <td class="metric" style="font-size:.68rem;letter-spacing:.02em">${f.name}</td>
+      <td style="color:var(--cyan)">${f.size_str}</td>
+      <td style="color:var(--fg)">${f.rows.toLocaleString()}</td>
+      <td style="color:var(--muted);font-size:.66rem">${f.modified}</td>
+    </tr>`).join('');
+}
+
+async function selectLog(name, rowEl){
+  selectedLog=name;
+  // Update row highlight
+  document.querySelectorAll('.log-row').forEach(r=>r.classList.remove('selected'));
+  rowEl.classList.add('selected');
+
+  const panel=$('log-summary-panel');
+  panel.innerHTML='<div class="card" style="text-align:center;padding:1.5rem;color:var(--dim)">'+
+    'Loading summary…</div>';
+
+  try{
+    const r=await fetch('/api/logfiles/'+encodeURIComponent(name)+'/summary');
+    const s=await r.json();
+    if(s.error){
+      panel.innerHTML=`<div class="card" style="color:var(--red)">${s.error}</div>`;
+      return;
+    }
+    renderLogSummary(s, panel);
+  }catch(e){
+    panel.innerHTML=`<div class="card" style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+function renderLogSummary(s, panel){
+  // ── Overview card ──────────────────────────────────────────────────────
+  const evHtml=s.silo_events&&s.silo_events.length
+    ?s.silo_events.map(e=>`<div style="padding:.1rem 0;border-bottom:1px solid #0d1928;
+        font-size:.67rem">
+      <span style="color:var(--dim)">${e.time.replace('T',' ').replace(/\.\d+Z/,' UTC')}</span>
+      <span style="color:var(--amber);margin:0 .4rem">${e.event.toUpperCase()}</span>
+      <span style="color:var(--muted)">via ${e.source||'?'}</span>
+      <span style="color:var(--cyan);margin-left:.4rem">→ ${e.state}</span>
+    </div>`).join('')
+    :'<span style="color:var(--dim)">No silo events recorded</span>';
+
+  const gpsBounds=s.gps_bounds&&s.gps_bounds.lat_min!==undefined
+    ?`${s.gps_bounds.lat_min}°N – ${s.gps_bounds.lat_max}°N, `+
+     `${s.gps_bounds.lon_min}° – ${s.gps_bounds.lon_max}°`
+    :'No GPS data';
+
+  const fixHtml=Object.entries(s.fix_counts||{})
+    .map(([k,v])=>`<span style="margin-right:.5rem">${k}: ${v}</span>`).join('');
+
+  panel.innerHTML=`
+  <div class="card" style="margin-bottom:.6rem">
+    <div class="sec-title" style="display:flex;align-items:center;gap:.5rem">
+      ${s.filename}
+      <a href="/api/logfiles/${encodeURIComponent(s.filename)}/download"
+         style="margin-left:auto;padding:.2rem .55rem;background:var(--bg);
+                color:var(--cyan);border:1px solid var(--border);
+                font-size:.65rem;font-weight:700;text-decoration:none;
+                letter-spacing:.08em">⬇ CSV</a>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem;font-size:.72rem">
+      <span style="color:var(--dim)">Start</span>
+      <span style="color:var(--cyan)">${s.start_time}</span>
+      <span style="color:var(--dim)">End</span>
+      <span style="color:var(--cyan)">${s.end_time}</span>
+      <span style="color:var(--dim)">Duration</span>
+      <span style="color:var(--white);font-weight:700">${s.duration_str}</span>
+      <span style="color:var(--dim)">Records</span>
+      <span style="color:var(--white);font-weight:700">${s.rows.toLocaleString()}</span>
+      <span style="color:var(--dim)">File size</span>
+      <span style="color:var(--cyan)">${s.size_str}</span>
+      <span style="color:var(--dim)">GPS bounds</span>
+      <span style="color:var(--muted);font-size:.67rem">${gpsBounds}</span>
+      <span style="color:var(--dim)">Satellites</span>
+      <span style="color:var(--cyan)">${s.sat_min!==null?s.sat_min+'–'+s.sat_max+' avg '+s.sat_avg:'—'}</span>
+      <span style="color:var(--dim)">GPS Fix types</span>
+      <span style="color:var(--muted);font-size:.67rem">${fixHtml||'—'}</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:.6rem">
+    <div class="sec-title">Motion Statistics</div>
+    <table class="sum-table">
+      <thead><tr>
+        <th>Metric</th><th>Min</th><th>Avg</th><th>Max</th>
+      </tr></thead>
+      <tbody>${Object.entries(s.metrics||{}).map(([label,d])=>`<tr>
+        <td>${label} (${d.unit})</td>
+        <td class="mn">${d.min}</td>
+        <td class="av">${d.avg}</td>
+        <td class="mx">${d.max}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>
+
+  <div class="card" style="margin-bottom:.6rem">
+    <div class="sec-title">Silo Events</div>
+    <div>${evHtml}</div>
+  </div>
+
+  <div class="card" style="margin-bottom:0">
+    <div class="sec-title" style="display:flex;align-items:center;gap:.5rem">
+      Track Preview
+      <button class="btn-sm" onclick="logMapReset()">Reset</button>
+      <button class="btn-sm" onclick="logMapZoomIn()">＋</button>
+      <button class="btn-sm" onclick="logMapZoomOut()">－</button>
+    </div>
+    <canvas id="log-mini-map" width="600" height="260"></canvas>
+  </div>`;
+
+  // Draw mini map
+  requestAnimationFrame(()=>{
+    const mc=$('log-mini-map');
+    mc.width=mc.offsetWidth||600;
+    window._logMap=new ChannelMap(mc);
+    window._logMap.draw(s.track||[]);
+  });
+}
+
+function logMapReset(){if(window._logMap){window._logMap.reset();window._logMap.draw(window._logMap._lastTrack);}}
+function logMapZoomIn() {if(window._logMap){window._logMap.zoomIn(); window._logMap.draw(window._logMap._lastTrack);}}
+function logMapZoomOut(){if(window._logMap){window._logMap.zoomOut();window._logMap.draw(window._logMap._lastTrack);}}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Restart
+// ══════════════════════════════════════════════════════════════════════════════
+async function doRestart(){
+  if(!confirm('Restart SiloController?'))return;
+  $('btn-restart').disabled=true;$('btn-restart').textContent='RESTARTING…';
+  try{await fetch('/api/restart',{method:'POST'});}catch(e){}
+  // Wait for process exit (0.8s) + systemd RestartSec (2s) + startup (~1s) = ~4s
+  setTimeout(()=>{
+    $('btn-restart').disabled=false;$('btn-restart').textContent='RESTART';
+    addLog('RESTARTED — reconnecting…');
+  },5000);
+}
+
+// ── GPS Module card ───────────────────────────────────────────────────────────
+function renderGPSModule(d) {
+  const gm = d.gps_module || {};
+  const GNSS_MAP = {0:'Default (GPS+SBAS)',1:'GPS only',3:'GPS+SBAS',
+    7:'GPS+SBAS+Galileo',15:'All constellations',67:'GPS+GLONASS'};
+  const TYPE_MAP = {0:'None/Disabled',1:'AUTO',2:'u-blox',5:'NMEA',
+    9:'u-blox (auto)',17:'u-blox Moving Base',18:'u-blox RelPos'};
+  const rows = [
+    dtRow('Module',    gm.type_str || (TYPE_MAP[gm.type_id] ?? '—')),
+    dtRow('HW Version',gm.hw_version || '—'),
+    dtRow('SW Version',gm.sw_version || '—'),
+    dtRow('Protocol',  gm.proto      || '—'),
+    dtRow('Serial No', gm.serial     || '(not available via MAVLink)'),
+    dtRow('GNSS Mode', gm.gnss_mode  || (GNSS_MAP[gm.gnss_mode] ?? '—')),
+    dtRow('Update Rate', gm.rate_ms!=null ? gm.rate_ms+'ms ('+Math.round(1000/(gm.rate_ms||200))+'Hz)':'—'),
+    dtRow('Port',      gm.com_port!=null  ? 'UART'+gm.com_port : '—'),
+    dtRow('Auto Config', gm.auto_config!=null ? (gm.auto_config?'Yes':'No') : '—'),
+  ];
+  $('dt-gps-mod').innerHTML = rows.join('');
+  const logs = (gm.statustext||[]);
+  $('gps-mod-log').textContent = logs.length
+    ? logs.join('\n')
+    : '(No version strings captured yet — click Re-detect)';
+}
+
+async function redetectGPS(){
+  const btn=$('btn-gps-redetect');
+  btn.disabled=true; btn.textContent='…';
+  try{
+    await fetch('/api/gps/redetect',{method:'POST'});
+    btn.textContent='Waiting…';
+    // Version strings arrive 3-5s after re-detect
+    setTimeout(()=>{loadDiag();btn.disabled=false;btn.textContent='Re-detect';},6000);
+  }catch(e){
+    btn.disabled=false;btn.textContent='Re-detect';
+    addLog('GPS re-detect error: '+e.message);
+  }
+}
+
+// ── Configuration tab ─────────────────────────────────────────────────────────
+async function loadConfigState(){
+  try{
+    const r = await fetch('/api/config/relay_state');
+    const d = await r.json();
+    $('cfg-current-state').textContent = (d.state||'unknown').toUpperCase();
+    $('cfg-relay-state').textContent   = d.relay_open ? 'OPEN (extended)' : 'CLOSED (retracted)';
+    if(d.travel_time!=null) $('cfg-travel-input').value = d.travel_time;
+  }catch(e){ $('cfg-current-state').textContent='error'; }
+  loadCalibration();
+}
+
+async function saveTravelTime(){
+  const val = parseFloat($('cfg-travel-input').value);
+  if(isNaN(val)||val<0.5){ $('cfg-travel-feedback').style.color='var(--red)';
+    $('cfg-travel-feedback').textContent='Enter a value ≥ 0.5 s'; return; }
+  const fb=$('cfg-travel-feedback');
+  fb.style.color='var(--dim)'; fb.textContent='Saving…';
+  try{
+    const r=await fetch('/api/config/travel_time',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({travel_time:val})
+    });
+    const d=await r.json();
+    if(d.ok){ fb.style.color='var(--green)'; fb.textContent='✓ Saved — travel time '+d.travel_time+' s'; }
+    else { fb.style.color='var(--red)'; fb.textContent='Error: '+(d.reason||'unknown'); }
+  }catch(e){ fb.style.color='var(--red)'; fb.textContent='Request failed: '+e.message; }
+}
+
+async function declareState(isOpen){
+  const btns = document.querySelectorAll('.cfg-declare-btn');
+  btns.forEach(b=>b.disabled=true);
+  const fb = $('cfg-feedback');
+  fb.style.color='var(--dim)'; fb.textContent='Saving…';
+  try{
+    const r = await fetch('/api/config/declare',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({open: isOpen})
+    });
+    const d = await r.json();
+    if(d.ok){
+      fb.style.color='var(--green)';
+      fb.textContent = '✓ State saved — silo declared '+(isOpen?'OPEN':'CLOSED');
+      loadConfigState();
+    } else {
+      fb.style.color='var(--red)'; fb.textContent='Error: '+(d.reason||'unknown');
+    }
+  }catch(e){
+    fb.style.color='var(--red)'; fb.textContent='Request failed: '+e.message;
+  }finally{
+    btns.forEach(b=>b.disabled=false);
+  }
+}
+
+// ── API Docs tab ──────────────────────────────────────────────────────────────
+async function renderDocs(){
+  // Get authoritative IP from the server
+  let ip = $('pi-ip') ? $('pi-ip').textContent.trim() : '';
+  if(!ip || ip === '—'){
+    try{
+      const r = await fetch('/api/system');
+      const d = await r.json();
+      ip = d.ip || '';
+    }catch(e){}
+  }
+  if(!ip || ip === '—') ip = window.location.hostname;
+  const base = `http://${ip}:5000`;
+
+  function setCode(id, txt){
+    const el=$(id);
+    if(!el) return;
+    el.textContent = txt;
+    // Add copy button if not already present
+    const wrap = el.parentElement;
+    if(!wrap.querySelector('.copy-btn[data-for="'+id+'"]')){
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.setAttribute('data-for', id);
+      btn.textContent = 'Copy';
+      btn.onclick = () => copyCode(txt, btn);
+      wrap.style.position = 'relative';
+      el.style.paddingRight = '4.5rem';
+      wrap.appendChild(btn);
+    } else {
+      // Update existing button's closure
+      wrap.querySelector('.copy-btn[data-for="'+id+'"]').onclick = () => copyCode(txt, wrap.querySelector('.copy-btn[data-for="'+id+'"]'));
+    }
+  }
+
+  setCode('doc-open',       `curl -X POST ${base}/api/open`);
+  setCode('doc-close',      `curl -X POST ${base}/api/close`);
+  setCode('doc-status',     `curl ${base}/api/status`);
+  setCode('doc-rec-start',  `curl -X POST ${base}/api/record/start`);
+  setCode('doc-rec-stop',   `curl -X POST ${base}/api/record/stop`);
+  setCode('doc-telem',      `curl ${base}/api/telemetry`);
+  setCode('doc-sse',        `curl -N ${base}/api/events`);
+
+  setCode('doc-mqtt-open-topic',  `silo/command`);
+  setCode('doc-mqtt-close-topic', `silo/command`);
+  setCode('doc-mqtt-state-topic', `silo/status`);
+  setCode('doc-mqtt-cli-open',  `mosquitto_pub -h ${ip} -t silo/command -m OPEN`);
+  setCode('doc-mqtt-cli-close', `mosquitto_pub -h ${ip} -t silo/command -m CLOSE`);
+  setCode('doc-mqtt-cli-sub',   `mosquitto_sub -h ${ip} -t silo/status`);
+  setCode('doc-mqtt-cli-msg',   `mosquitto_pub -h ${ip} -t silo/message -m "LAUNCH SEQUENCE ARMED"`);
+  setCode('doc-mqtt-cli-event', `mosquitto_sub -h ${ip} -t silo/event`);
+
+  setCode('doc-cam-msg',        `curl -X POST ${base}/api/camera/message \\\n  -H "Content-Type: application/json" \\\n  -d '{"message":"TORPEDO DOOR OPEN"}'`);
+  setCode('doc-cam-msgs',       `curl ${base}/api/camera/messages`);
+  setCode('doc-cam-stream',     `${base}/api/camera/stream`);
+  setCode('doc-cam-snap',       `curl -o snapshot.jpg ${base}/api/camera/snapshot`);
+  setCode('doc-cam-rec-start',  `curl -X POST ${base}/api/camera/record/start`);
+  setCode('doc-cam-rec-stop',   `curl -X POST ${base}/api/camera/record/stop`);
+
+
+  // Update the note
+  const note = $('docs-ip-note');
+  if(note) note.innerHTML = `Commands shown for Pi at <code style="color:var(--cyan)">${ip}</code> &nbsp;·&nbsp; port 5000`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Video tab
+// ══════════════════════════════════════════════════════════════════════════════
+let _vidActive = false;
+let _vidMsgPollTimer = null;
+
+async function initVideoTab(){
+  if(_vidActive) return;
+  _vidActive = true;
+  const st = await fetchJSON('/api/camera/status');
+  if(st && st.camera_detected){
+    $('vid-no-feed').style.display='none';
+    $('vid-img').style.display='block';
+    $('vid-img').src='/api/camera/stream';
+    $('vid-cam-status').textContent='CAMERA ONLINE';
+    $('vid-cam-status').style.color='var(--green)';
+    applyVidRecState(st.recording);
+  } else {
+    $('vid-cam-status').textContent='NO CAMERA';
+  }
+  loadVideoList();
+  await loadVidMessages();
+  // Poll messages every 5s while tab active
+  _vidMsgPollTimer = setInterval(loadVidMessages, 5000);
+}
+
+// Called when leaving the video tab
+function leaveVideoTab(){
+  if(_vidMsgPollTimer){ clearInterval(_vidMsgPollTimer); _vidMsgPollTimer=null; }
+}
+
+async function fetchJSON(url){
+  try{ const r=await fetch(url); return await r.json(); }
+  catch(e){ addLog('Video: '+e.message); return null; }
+}
+
+function applyVidRecState(active){
+  const badge=$('vid-rec-badge');
+  badge.className='vid-rec-badge '+(active?'recording':'idle');
+  badge.textContent=active?'● RECORDING':'● STANDBY';
+  $('vid-rec-start-btn').style.display=active?'none':'block';
+  $('vid-rec-stop-btn').style.display=active?'block':'none';
+}
+
+async function vidSnapshot(){
+  const btn=$('vid-snap-btn');
+  btn.textContent='SAVING…'; btn.disabled=true;
+  try{
+    const r=await fetch('/api/camera/snapshot');
+    if(r.status===204){ addLog('Snapshot: no camera'); return; }
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,-5);
+    a.href=url; a.download='snapshot_'+ts+'.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    btn.textContent='✓ SAVED';
+    setTimeout(()=>{ btn.textContent='📷 SNAPSHOT'; btn.disabled=false; },2000);
+  }catch(e){
+    addLog('Snapshot error: '+e.message);
+    btn.textContent='📷 SNAPSHOT'; btn.disabled=false;
+  }
+}
+
+async function vidRecStart(){
+  try{
+    const resp=await fetch('/api/camera/record/start',{method:'POST'});
+    const d=await resp.json();
+    if(d.ok) applyVidRecState(true);
+    else addLog('Cam start: '+(d.reason||'error'));
+  }catch(e){ addLog('Cam start: '+e.message); }
+}
+async function vidRecStop(){
+  try{
+    const resp=await fetch('/api/camera/record/stop',{method:'POST'});
+    const d=await resp.json();
+    if(d.ok) applyVidRecState(false);
+    else addLog('Cam stop: '+(d.reason||'error'));
+  }catch(e){ addLog('Cam stop: '+e.message); }
+}
+
+async function vidSendMsg(){
+  const inp=$('vid-msg-input');
+  const text=inp.value.trim();
+  if(!text) return;
+  inp.value='';
+  try{
+    await fetch('/api/camera/message',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message:text})
+    });
+    await loadVidMessages();
+  }catch(e){ addLog('Vid msg: '+e.message); }
+}
+
+async function loadVidMessages(){
+  const msgs=await fetchJSON('/api/camera/messages');
+  if(!msgs) return;
+  const log=$('vid-msg-log');
+  if(!msgs.length){ log.innerHTML='<div style="color:var(--dim)">No messages yet</div>'; return; }
+  log.innerHTML=[...msgs].reverse().map(m=>
+    `<div><span style="color:var(--dim)">[${m.ts}]</span> <span style="color:var(--fg)">${m.text}</span></div>`
+  ).join('');
+}
+
+async function loadVideoList(){
+  const files=await fetchJSON('/api/camera/videos');
+  if(!files) return;
+  $('vid-file-count').textContent=files.length+' file'+(files.length!==1?'s':'');
+  const tbody=$('vid-file-body');
+  if(!files.length){
+    tbody.innerHTML='<tr><td colspan="4" style="color:var(--dim);text-align:center;padding:.5rem">No recordings found</td></tr>';
+    return;
+  }
+  tbody.innerHTML=files.map(f=>`
+    <tr>
+      <td class="metric" style="font-size:.65rem">${f.name}</td>
+      <td style="color:var(--cyan)">${f.size_str}</td>
+      <td style="color:var(--muted);font-size:.63rem">${f.modified}</td>
+      <td><a href="/api/camera/videos/${encodeURIComponent(f.name)}/download"
+             style="color:var(--amber);font-size:.65rem;font-weight:700;text-decoration:none;
+                    padding:.15rem .4rem;border:1px solid var(--amber)">⬇ MP4</a></td>
+    </tr>`).join('');
+}
+
+// Update video tab telem panel from SSE telemetry events
+function updateVidTelem(t, siloState){
+  if(!$('tab-video').classList.contains('active')) return;
+  const FIX={0:'NO FIX',1:'NO FIX',2:'2D',3:'3D',4:'DGPS',5:'RTK FLT',6:'RTK FIX'};
+  if(t){
+    const kts=(t.groundspeed*1.94384).toFixed(1);
+    const fixStr=(FIX[t.gps_fix]||'?')+' '+t.satellites+'sat';
+    $('vt-fix').textContent=fixStr;
+    $('vt-fix').className='vtv '+(t.gps_fix>=3?'good':t.gps_fix>=2?'warn':'bad');
+    $('vt-lat').textContent=t.lat.toFixed(5)+'°';
+    $('vt-lon').textContent=t.lon.toFixed(5)+'°';
+    $('vt-alt').textContent=t.alt_m.toFixed(1)+' m';
+    $('vt-sats').textContent=t.satellites;
+    $('vt-spd').textContent=kts+' kt';
+    $('vt-cog').textContent=t.heading_deg.toFixed(0)+'°';
+    const pCls=Math.abs(t.pitch_deg)>15?'bad':Math.abs(t.pitch_deg)>8?'warn':'good';
+    const rCls=Math.abs(t.roll_deg)>25?'bad':Math.abs(t.roll_deg)>15?'warn':'good';
+    $('vt-pitch').textContent=(t.pitch_deg>=0?'+':'')+t.pitch_deg.toFixed(1)+'°';
+    $('vt-pitch').className='vtv '+pCls;
+    $('vt-roll').textContent=(t.roll_deg>=0?'+':'')+t.roll_deg.toFixed(1)+'°';
+    $('vt-roll').className='vtv '+rCls;
+  }
+  if(siloState) $('vt-silo').textContent=siloState.toUpperCase();
+  $('vt-utc').textContent=new Date().toISOString().replace('T',' ').slice(0,19)+' Z';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Calibration
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadCalibration(){
+  try{
+    const r=await fetch('/api/config/calibration');
+    const d=await r.json();
+    $('cal-pitch-input').value=d.pitch_offset||0;
+    $('cal-roll-input').value =d.roll_offset||0;
+    $('cal-cur-pitch').textContent=(d.pitch_offset>=0?'+':'')+Number(d.pitch_offset||0).toFixed(2);
+    $('cal-cur-roll').textContent =(d.roll_offset>=0?'+':'')+Number(d.roll_offset||0).toFixed(2);
+  }catch(e){}
+}
+
+async function calCapture(){
+  const fb=$('cal-feedback');
+  fb.style.color='var(--dim)'; fb.textContent='Capturing…';
+  try{
+    const r=await fetch('/api/config/calibration/capture',{method:'POST'});
+    const d=await r.json();
+    if(d.ok){
+      fb.style.color='var(--green)';
+      fb.textContent=`✓ Level captured — pitch offset ${d.pitch_offset>=0?'+':''}${d.pitch_offset.toFixed(2)}°`+
+                     `  roll offset ${d.roll_offset>=0?'+':''}${d.roll_offset.toFixed(2)}°`;
+      $('cal-pitch-input').value=d.pitch_offset;
+      $('cal-roll-input').value =d.roll_offset;
+      $('cal-cur-pitch').textContent=(d.pitch_offset>=0?'+':'')+d.pitch_offset.toFixed(2);
+      $('cal-cur-roll').textContent =(d.roll_offset>=0?'+':'')+d.roll_offset.toFixed(2);
+    } else {
+      fb.style.color='var(--red)'; fb.textContent='Error: '+(d.reason||'?');
+    }
+  }catch(e){ fb.style.color='var(--red)'; fb.textContent='Request failed: '+e.message; }
+}
+
+async function calSave(){
+  const pitch=parseFloat($('cal-pitch-input').value)||0;
+  const roll =parseFloat($('cal-roll-input').value)||0;
+  const fb=$('cal-feedback');
+  fb.style.color='var(--dim)'; fb.textContent='Saving…';
+  try{
+    const r=await fetch('/api/config/calibration',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pitch_offset:pitch,roll_offset:roll})
+    });
+    const d=await r.json();
+    if(d.ok){
+      fb.style.color='var(--green)';
+      fb.textContent=`✓ Saved — pitch ${d.pitch_offset>=0?'+':''}${d.pitch_offset.toFixed(2)}°`+
+                     `  roll ${d.roll_offset>=0?'+':''}${d.roll_offset.toFixed(2)}°`;
+      $('cal-cur-pitch').textContent=(d.pitch_offset>=0?'+':'')+d.pitch_offset.toFixed(2);
+      $('cal-cur-roll').textContent =(d.roll_offset>=0?'+':'')+d.roll_offset.toFixed(2);
+    } else { fb.style.color='var(--red)'; fb.textContent='Error: '+(d.reason||'?'); }
+  }catch(e){ fb.style.color='var(--red)'; fb.textContent='Request failed: '+e.message; }
+}
+
+async function calReset(){
+  const fb=$('cal-feedback');
+  fb.style.color='var(--dim)'; fb.textContent='Resetting…';
+  try{
+    const r=await fetch('/api/config/calibration/reset',{method:'POST'});
+    const d=await r.json();
+    if(d.ok){
+      $('cal-pitch-input').value=0; $('cal-roll-input').value=0;
+      $('cal-cur-pitch').textContent='+0.00'; $('cal-cur-roll').textContent='+0.00';
+      fb.style.color='var(--green)'; fb.textContent='✓ Offsets reset to zero';
+    }
+  }catch(e){ fb.style.color='var(--red)'; fb.textContent='Request failed: '+e.message; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Stress test
+// ══════════════════════════════════════════════════════════════════════════════
+let _stressTimer = null;
+
+async function stressStart(){
+  const cycles  = parseInt($('st-cycles').value);
+  const pause_s = parseFloat($('st-pause').value);
+  if(isNaN(cycles)||cycles<1){ $('st-progress').style.color='var(--red)';
+    $('st-progress').textContent='Enter at least 1 cycle.'; return; }
+  if(!confirm(`Run stress test: ${cycles} open/close cycles with ${pause_s}s pause?`)) return;
+
+  try{
+    const resp=await fetch('/api/stress/start',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({cycles, pause_s})
+    });
+    const d=await resp.json();
+    if(!d.ok){ $('st-progress').style.color='var(--red)';
+               $('st-progress').textContent='Error: '+(d.reason||'?'); return; }
+  }catch(e){ $('st-progress').textContent='Error: '+e.message; return; }
+
+  $('st-start-btn').style.display='none';
+  $('st-stop-btn').style.display='inline-block';
+  $('st-bar-wrap').style.display='block';
+  $('st-progress').style.color='var(--amber)';
+  _stressTimer=setInterval(pollStressStatus,800);
+}
+
+async function stressStop(){
+  try{ await fetch('/api/stress/stop',{method:'POST'}); }
+  catch(e){}
+}
+
+async function pollStressStatus(){
+  const d=await fetchJSON('/api/stress/status');
+  if(!d) return;
+  if(!d.running){
+    clearInterval(_stressTimer); _stressTimer=null;
+    $('st-start-btn').style.display='inline-block';
+    $('st-stop-btn').style.display='none';
+    $('st-progress').style.color=d.done===d.total&&d.total>0?'var(--green)':'var(--amber)';
+    $('st-progress').textContent=
+      d.done===d.total&&d.total>0
+        ? `✓ Complete — ${d.done} / ${d.total} cycles`
+        : `Stopped — ${d.done} / ${d.total} cycles completed`;
+    $('st-bar').style.width=(d.total>0?Math.round(d.done/d.total*100):0)+'%';
+    return;
+  }
+  const pct=d.total>0?Math.round(d.done/d.total*100):0;
+  $('st-bar').style.width=pct+'%';
+  $('st-progress').textContent=`${d.step}  (${d.done}/${d.total} done)`;
+}
+
+function copyCode(text, btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent=orig; btn.classList.remove('copied'); }, 1800);
+  }).catch(()=>{
+    // Fallback for non-https
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent=orig; btn.classList.remove('copied'); }, 1800);
+  });
+}
+</script>
+</body>
+</html>
