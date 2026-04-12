@@ -175,6 +175,15 @@ for frame in stream_telemetry("10.100.151.193"):
 | `GET` | `/api/logfiles` | List recorded CSV files |
 | `GET` | `/api/logfiles/<name>/download` | Download a CSV file |
 
+### API message log
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/log` | All inbound API actions, newest first. `?limit=200&offset=0` |
+
+Returns `{"total": N, "entries": [{ts, source, action, payload, result, remote_addr}, ...]}`.
+Every command sent via HTTP or MQTT is logged persistently to `logs/api_messages.jsonl`.
+
 ### System
 
 | Method | Path | Description |

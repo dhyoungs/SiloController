@@ -32,6 +32,8 @@ from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
+from core.api_log import log_api_message
+
 logger = logging.getLogger(__name__)
 
 BROKER_HOST  = "localhost"
@@ -101,17 +103,24 @@ class MqttHandler:
             self._handle_record_command(payload)
         elif topic == TOPIC_MSG:
             raw = msg.payload.decode("utf-8", errors="replace").strip()
-            if raw and self._cam:
-                self._cam.post_message(raw)
+            if raw:
+                log_api_message(source="mqtt", action="message", payload=raw, result="ok")
+                if self._cam:
+                    self._cam.post_message(raw)
 
     # ── Command handlers ─────────────────────────────────────────────────────
 
     def _handle_silo_command(self, cmd: str) -> None:
         if cmd == "open":
             result = self._silo.open(source="mqtt")
+            log_api_message(source="mqtt", action="open",
+                            result="ok" if result["ok"] else result.get("reason", ""))
         elif cmd == "close":
             result = self._silo.close(source="mqtt")
+            log_api_message(source="mqtt", action="close",
+                            result="ok" if result["ok"] else result.get("reason", ""))
         elif cmd == "status":
+            log_api_message(source="mqtt", action="status", result="ok")
             self._publish(TOPIC_STATUS, self._silo.state)
             return
         else:
@@ -123,9 +132,14 @@ class MqttHandler:
     def _handle_record_command(self, cmd: str) -> None:
         if cmd == "start":
             result = self._recorder.start_recording(source="mqtt")
+            log_api_message(source="mqtt", action="record/start",
+                            result="ok" if result["ok"] else result.get("reason", ""))
         elif cmd == "stop":
             result = self._recorder.stop_recording(source="mqtt")
+            log_api_message(source="mqtt", action="record/stop",
+                            result="ok" if result["ok"] else result.get("reason", ""))
         elif cmd == "status":
+            log_api_message(source="mqtt", action="record/status", result="ok")
             self._publish(TOPIC_RECSTT, str(self._recorder.active).lower())
             return
         else:

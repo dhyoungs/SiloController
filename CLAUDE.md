@@ -104,6 +104,14 @@ All subsystems run on daemon threads.  `main()` blocks on the Tk event loop
 - `post_message(text)` — stores msg, shown on overlay (last 3) and Video tab log
 - MJPEG stream at `/api/camera/stream` (multipart/x-mixed-replace)
 
+### `core/api_log.py`
+- Persistent JSONL log of all inbound API actions (HTTP and MQTT)
+- File: `logs/api_messages.jsonl` — one JSON object per line
+- Each entry: `{ts, source, action, payload, result, remote_addr}`
+- Auto-rotates at 2 MB (renames to `.1`)
+- Thread-safe; `log_api_message()` called from web and MQTT handlers
+- `read_log(limit, offset)` returns newest-first for the `/api/log` endpoint
+
 ### `web/app.py`
 - Flask on port 5000, threaded, no reloader
 - SSE at `/api/events` — pushes `state`, `telemetry`, `recording`, `cam_recording`, `heartbeat`
@@ -153,6 +161,7 @@ All subsystems run on daemon threads.  `main()` blocks on the Tk event loop
 | POST | `/api/camera/record/stop` | Manual record stop |
 | POST | `/api/gps/redetect` | Re-request GPS params (non-disruptive) |
 | POST | `/api/restart` | Graceful restart (systemd respawns) |
+| GET | `/api/log` | API message log (newest first); `?limit=N&offset=N` |
 
 ---
 

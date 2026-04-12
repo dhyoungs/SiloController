@@ -32,6 +32,8 @@ from pathlib import Path
 
 from flask import Flask, Response, jsonify, render_template, request, send_file
 
+from core.api_log import log_api_message, read_log, log_count
+
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -178,12 +180,20 @@ def status():
 
 @app.route("/api/open", methods=["POST"])
 def api_open():
-    return jsonify(_silo.open(source="web"))
+    result = _silo.open(source="web")
+    log_api_message(source="web", action="open",
+                    result="ok" if result["ok"] else result.get("reason", ""),
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
 
 
 @app.route("/api/close", methods=["POST"])
 def api_close():
-    return jsonify(_silo.close(source="web"))
+    result = _silo.close(source="web")
+    log_api_message(source="web", action="close",
+                    result="ok" if result["ok"] else result.get("reason", ""),
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
 
 
 @app.route("/api/config/declare", methods=["POST"])
@@ -193,7 +203,12 @@ def api_declare_state():
     is_open = data.get("open")
     if is_open is None:
         return jsonify({"ok": False, "reason": "Missing 'open' boolean"}), 400
-    return jsonify(_silo.declare_state(bool(is_open), source="config-ui"))
+    result = _silo.declare_state(bool(is_open), source="config-ui")
+    log_api_message(source="web", action="config/declare",
+                    payload=f"open={is_open}",
+                    result="ok" if result["ok"] else result.get("reason", ""),
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
 
 
 @app.route("/api/config/relay_state")
@@ -222,6 +237,9 @@ def api_set_calibration():
     except (TypeError, ValueError):
         return jsonify({"ok": False, "reason": "Invalid offset values"}), 400
     result = set_calibration(pitch, roll)
+    log_api_message(source="web", action="config/calibration",
+                    payload=f"pitch={pitch} roll={roll}", result="ok",
+                    remote_addr=request.remote_addr)
     return jsonify({"ok": True, **result})
 
 
@@ -234,6 +252,9 @@ def api_capture_level():
     f = _telem.frame
     result = capture_level_calibration(f.pitch_deg, f.roll_deg)
     logger.info("Level captured: raw pitch=%.2f  raw roll=%.2f", f.pitch_deg, f.roll_deg)
+    log_api_message(source="web", action="config/calibration/capture",
+                    payload=f"pitch={f.pitch_deg:.2f} roll={f.roll_deg:.2f}",
+                    result="ok", remote_addr=request.remote_addr)
     return jsonify({"ok": True, **result, "captured_pitch": round(f.pitch_deg, 2),
                     "captured_roll": round(f.roll_deg, 2)})
 
@@ -243,6 +264,8 @@ def api_reset_calibration():
     """Reset both offsets to zero."""
     from telemetry.reader import set_calibration
     result = set_calibration(0.0, 0.0)
+    log_api_message(source="web", action="config/calibration/reset",
+                    result="ok", remote_addr=request.remote_addr)
     return jsonify({"ok": True, **result})
 
 
@@ -258,17 +281,30 @@ def api_set_travel_time():
         secs = float(data["travel_time"])
     except (KeyError, TypeError, ValueError):
         return jsonify({"ok": False, "reason": "Missing or invalid 'travel_time'"}), 400
-    return jsonify(_silo.set_travel_time(secs))
+    result = _silo.set_travel_time(secs)
+    log_api_message(source="web", action="config/travel_time",
+                    payload=f"{secs}s",
+                    result="ok" if result["ok"] else result.get("reason", ""),
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
 
 
 @app.route("/api/record/start", methods=["POST"])
 def api_record_start():
-    return jsonify(_recorder.start_recording(source="web"))
+    result = _recorder.start_recording(source="web")
+    log_api_message(source="web", action="record/start",
+                    result="ok" if result["ok"] else result.get("reason", ""),
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
 
 
 @app.route("/api/record/stop", methods=["POST"])
 def api_record_stop():
-    return jsonify(_recorder.stop_recording(source="web"))
+    result = _recorder.stop_recording(source="web")
+    log_api_message(source="web", action="record/stop",
+                    result="ok" if result["ok"] else result.get("reason", ""),
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
 
 
 @app.route("/api/telemetry")
@@ -350,12 +386,16 @@ def api_gps_redetect():
                 )
             except Exception:
                 pass
+        log_api_message(source="web", action="gps/redetect", result="ok",
+                        remote_addr=request.remote_addr)
         return jsonify({"ok": True, "msg": "GPS parameters refreshed"})
     return jsonify({"ok": False, "msg": "Not connected"}), 503
 
 
 @app.route("/api/restart", methods=["POST"])
 def api_restart():
+    log_api_message(source="web", action="restart", result="ok",
+                    remote_addr=request.remote_addr)
     logger.info("Restart requested from web")
     # Exit cleanly after the response is sent — systemd (Restart=always) brings it back up
     def _do_exit():
@@ -580,12 +620,20 @@ def api_stress_start():
         pause_s = float(data.get("pause_s", 3.0))
     except (TypeError, ValueError):
         return jsonify({"ok": False, "reason": "Invalid cycles or pause_s"}), 400
-    return jsonify(_silo.start_stress_test(cycles, pause_s))
+    result = _silo.start_stress_test(cycles, pause_s)
+    log_api_message(source="web", action="stress/start",
+                    payload=f"cycles={cycles} pause={pause_s}s",
+                    result="ok" if result["ok"] else result.get("reason", ""),
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
 
 
 @app.route("/api/stress/stop", methods=["POST"])
 def api_stress_stop():
-    return jsonify(_silo.stop_stress_test())
+    result = _silo.stop_stress_test()
+    log_api_message(source="web", action="stress/stop", result="ok",
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
 
 
 @app.route("/api/stress/status")
@@ -634,6 +682,9 @@ def api_camera_message():
     text = str(data.get("message", "")).strip()
     if not text:
         return jsonify({"ok": False, "reason": "Empty message"}), 400
+    log_api_message(source="web", action="camera/message",
+                    payload=text, result="ok",
+                    remote_addr=request.remote_addr)
     if _cam is None:
         return jsonify({"ok": True, "note": "no camera — message logged only"})
     return jsonify(_cam.post_message(text))
@@ -669,14 +720,33 @@ def api_camera_video_download(name):
 def api_camera_record_start():
     if _cam is None:
         return jsonify({"ok": False, "reason": "No camera"}), 503
-    return jsonify(_cam.start_recording())
+    result = _cam.start_recording()
+    log_api_message(source="web", action="camera/record/start",
+                    result="ok" if result.get("ok") else result.get("reason", ""),
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
 
 
 @app.route("/api/camera/record/stop", methods=["POST"])
 def api_camera_record_stop():
     if _cam is None:
         return jsonify({"ok": False, "reason": "No camera"}), 503
-    return jsonify(_cam.stop_recording())
+    result = _cam.stop_recording()
+    log_api_message(source="web", action="camera/record/stop",
+                    result="ok" if result.get("ok") else result.get("reason", ""),
+                    remote_addr=request.remote_addr)
+    return jsonify(result)
+
+
+@app.route("/api/log")
+def api_log():
+    """Return recent API message log entries (newest first)."""
+    limit  = min(int(request.args.get("limit", 200)), 1000)
+    offset = int(request.args.get("offset", 0))
+    return jsonify({
+        "total":   log_count(),
+        "entries": read_log(limit=limit, offset=offset),
+    })
 
 
 @app.route("/api/events")
