@@ -274,13 +274,26 @@ def api_record_stop():
 @app.route("/api/telemetry")
 def api_telemetry():
     f = _telem.frame
+    d = _telem.diagnostics if _telem else {}
     return jsonify({
-        "lat":         f.lat,          "lon":         f.lon,
-        "alt_m":       f.alt_m,        "heading_deg": f.heading_deg,
-        "yaw_deg":     f.yaw_deg,      "groundspeed": f.groundspeed,
-        "pitch_deg":   f.pitch_deg,    "roll_deg":    f.roll_deg,
-        "gps_fix":     f.gps_fix,      "satellites":  f.satellites,
+        "lat":         round(f.lat, 7),
+        "lon":         round(f.lon, 7),
+        "alt_m":       round(f.alt_m, 2),
+        "heading_deg": round(f.heading_deg, 1),
+        "yaw_deg":     round(f.yaw_deg, 1),
+        "groundspeed": round(f.groundspeed, 2),
+        "pitch_deg":   round(f.pitch_deg, 2),
+        "roll_deg":    round(f.roll_deg, 2),
+        "gps_fix":     f.gps_fix,
+        "satellites":  f.satellites,
+        "hdop":        round(f.hdop, 2),
+        "vdop":        round(f.vdop, 2),
+        "h_acc":       round(f.h_acc, 1),
+        "v_acc":       round(f.v_acc, 1),
         "valid":       f.valid,
+        "radio_rssi":  d.get("radio_rssi"),
+        "mlrs_lq_pct": d.get("mlrs_lq_pct"),
+        "timestamp":   datetime.now(timezone.utc).isoformat(),
     })
 
 
