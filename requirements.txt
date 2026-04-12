@@ -2,3 +2,6 @@ flask>=3.0
 paho-mqtt>=1.6
 gpiozero>=2.0
 pymavlink>=2.4
+numpy>=1.24
+# python-prctl is also installed by install.sh (needed by picamera2 internals)
+# opencv (cv2) and picamera2 are installed as system packages by install.sh
