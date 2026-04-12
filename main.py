@@ -44,6 +44,7 @@ def main() -> None:
     recorder = Recorder(telem, silo, stats)
     cam      = CameraRecorder()
     cam.set_telemetry(telem)
+    cam.set_silo(silo)
     silo.add_event_listener(cam.on_silo_event)
 
     # ── Seed stats from any recordings in the last 30 minutes ───────────────
