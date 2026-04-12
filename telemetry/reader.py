@@ -33,6 +33,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -427,7 +428,7 @@ class TelemetryReader:
                 self._diag["radio_remnoise"]  = msg.remnoise
                 self._diag["radio_rxerrors"]  = msg.rxerrors  # cumulative errors
                 self._diag["radio_fixed"]     = msg.fixed     # packets repaired
-                self._diag["radio_ts"]        = time.strftime("%H:%M:%S")
+                self._diag["radio_ts"]        = (lambda n: n.strftime(f"%H:%M:%S.{n.microsecond // 1000:03d}"))(datetime.now(timezone.utc))
 
             elif mt == "RC_CHANNELS":
                 # mLRS puts link quality in chan16 (0-100 scaled to 0-1000)
@@ -549,7 +550,7 @@ class TelemetryReader:
                 }
                 txt = msg.text.rstrip("\x00")
                 self._diag["statustext"].append({
-                    "ts":   time.strftime("%H:%M:%S"),
+                    "ts":   (lambda n: n.strftime(f"%H:%M:%S.{n.microsecond // 1000:03d}"))(datetime.now(timezone.utc)),
                     "sev":  sev_names.get(msg.severity, str(msg.severity)),
                     "text": txt,
                 })

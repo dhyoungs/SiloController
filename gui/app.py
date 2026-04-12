@@ -775,7 +775,7 @@ class SiloGUI:
         self._lbl_uptime.config(text=f"SW UP: {_fmt_hms(elapsed)}")
         self._lbl_hwup.config(text=f"HW UP: {_fmt_hms(_hw_uptime_s())}")
         self._lbl_utc.config(
-            text="UTC: " + datetime.now(timezone.utc).strftime("%H:%M:%S"))
+            text="UTC: " + (lambda n: n.strftime(f"%H:%M:%S.{n.microsecond // 1000:03d}"))(datetime.now(timezone.utc)))
         if elapsed % 10 == 0:
             new_ip = _get_ip()
             if new_ip != self._ip:

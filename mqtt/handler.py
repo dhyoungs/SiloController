@@ -140,7 +140,7 @@ class MqttHandler:
         self._publish(TOPIC_STATUS, state)
 
     def _on_silo_event(self, state: str, source: str) -> None:
-        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ts = (lambda n: n.strftime(f"%Y-%m-%dT%H:%M:%S.{n.microsecond // 1000:03d}Z"))(datetime.now(timezone.utc))
         payload = json.dumps({"event": state, "ts": ts, "source": source})
         self._client.publish(TOPIC_EVENT, payload, qos=1, retain=False)
         logger.info("MQTT → %s  %s", TOPIC_EVENT, payload)

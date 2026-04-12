@@ -47,6 +47,12 @@ _sse_queues: list[queue.Queue] = []
 _sse_lock   = threading.Lock()
 
 
+def _utc_ms() -> str:
+    """Current UTC time as HH:MM:SS.mmm"""
+    n = datetime.now(timezone.utc)
+    return n.strftime(f"%H:%M:%S.{n.microsecond // 1000:03d}")
+
+
 def init(silo, telemetry, recorder, stats, cam=None) -> None:
     global _silo, _telem, _recorder, _cam, _stats, _start_t
     _silo     = silo
@@ -142,7 +148,7 @@ def _heartbeat_loop() -> None:
         _broadcast("heartbeat", {
             "sw_uptime_s": int(time.monotonic() - _start_t),
             "hw_uptime_s": hw_up,
-            "utc":         datetime.now(timezone.utc).strftime("%H:%M:%S"),
+            "utc":         _utc_ms(),
             "ip":          ip,
         })
 
@@ -314,7 +320,7 @@ def api_system():
         "ip":          ip,
         "hw_uptime_s": hw_up,
         "sw_uptime_s": int(time.monotonic() - _start_t),
-        "utc":         datetime.now(timezone.utc).strftime("%H:%M:%S"),
+        "utc":         (lambda n: n.strftime(f"%H:%M:%S.{n.microsecond // 1000:03d}"))(datetime.now(timezone.utc)),
     })
 
 
@@ -374,7 +380,7 @@ def api_logfiles():
                 "size_b":   st.st_size,
                 "size_str": _human_size(st.st_size),
                 "modified": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc)
-                                    .strftime("%Y-%m-%d %H:%M UTC"),
+                                    .strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "rows":     rows,
                 "path":     str(p),
             })
@@ -454,7 +460,8 @@ def _summarise_csv(path: Path) -> dict:
     dur_s   = t1 - t0
 
     def fmt_ts(t):
-        return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        n = datetime.fromtimestamp(t, tz=timezone.utc)
+        return n.strftime(f"%Y-%m-%d %H:%M:%S.{n.microsecond // 1000:03d} UTC")
 
     # Numeric metrics to summarise
     METRICS = [

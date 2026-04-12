@@ -220,7 +220,8 @@ class CameraRecorder:
         FIX = {0: "NO FIX", 1: "NO FIX", 2: "2D FIX", 3: "3D FIX",
                4: "DGPS",   5: "RTK FLT", 6: "RTK FIX"}
 
-        now_str  = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        _now     = datetime.now(timezone.utc)
+        now_str  = _now.strftime(f"%Y-%m-%d %H:%M:%S.{_now.microsecond // 1000:03d} UTC")
         with self._lock:
             recording = self._recording
         rec_mark = "[REC]" if recording else "[LIVE]"
@@ -367,7 +368,7 @@ class CameraRecorder:
             "closed":  "SILO CLOSED",
         }
         label  = EVENT_LABELS.get(state, f"SILO {state.upper()}")
-        ts_str = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
+        ts_str = (lambda n: n.strftime(f"%H:%M:%S.{n.microsecond // 1000:03d} UTC"))(datetime.now(timezone.utc))
         self.post_message(f"{label}  [{ts_str}]  via {source}")
 
         if state == "opening":
@@ -454,7 +455,7 @@ class CameraRecorder:
 
     def post_message(self, text: str) -> dict:
         """Add a custom status message to the telemetry bar."""
-        ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        ts = (lambda n: n.strftime(f"%H:%M:%S.{n.microsecond // 1000:03d}"))(datetime.now(timezone.utc))
         with self._lock:
             self._messages.append((ts, str(text)[:120]))
             self._messages = self._messages[-20:]
@@ -477,7 +478,7 @@ class CameraRecorder:
                     "size_str": _human_size(st.st_size),
                     "modified": datetime.fromtimestamp(
                         st.st_mtime, tz=timezone.utc
-                    ).strftime("%Y-%m-%d %H:%M UTC"),
+                    ).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 })
             except Exception:
                 pass
