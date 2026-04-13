@@ -56,13 +56,15 @@ If open/close direction is backwards, swap OUT+/OUT− on the actuator terminals
 ```
 main.py
   ├── core/silo.py          SiloController   — state machine + GPIO driver
+  ├── core/api_log.py       API message log  — persistent JSONL audit log
   ├── telemetry/reader.py   TelemetryReader  — MAVLink / serial reader
   ├── telemetry/recorder.py Recorder         — CSV telemetry logger
   ├── telemetry/stats.py    StatsTracker     — rolling min/avg/max
   ├── camera/recorder.py    CameraRecorder   — Pi camera, MJPEG, MP4 recording
   ├── web/app.py            Flask REST API   — port 5000
   ├── mqtt/handler.py       MqttHandler      — Mosquitto broker localhost:1883
-  └── gui/app.py            SiloGUI          — optional tkinter desktop UI
+  ├── gui/app.py            SiloGUI          — optional tkinter desktop UI
+  └── tools/net_overlay.py  Network overlay  — burns IP info into wallpaper
 ```
 
 All subsystems run on daemon threads.  `main()` blocks on the Tk event loop
@@ -195,6 +197,7 @@ Updated on every relay toggle and manual declaration.  Survives reboots.
 
 - **CSV telemetry**: `recordings/PB*.csv` — one file per recording session
 - **MP4 video**: `recordings/video/PBvideo_*.mp4` — H264, 1280×720, 30 fps
+- **API message log**: `logs/api_messages.jsonl` — all inbound HTTP/MQTT actions, rotates at 2 MB
 - Disk guard: oldest MP4 deleted if disk free < 15%
 
 ---

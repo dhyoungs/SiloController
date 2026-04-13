@@ -9,9 +9,15 @@ recordings/*.csv
 recordings/video/*.mp4
 recordings/video/*.h264
 
+# API message log (runtime data)
+logs/
+
 # Persistent state (machine-specific)
 silo_state.json
 calibration.json
+
+# Net overlay generated wallpaper
+.config/net-wallpaper.png
 
 # Editor / OS
 .DS_Store

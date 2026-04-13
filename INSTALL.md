@@ -64,7 +64,9 @@
 | 5 | Writes `/etc/mosquitto/conf.d/silo.conf` (anonymous local listener) |
 | 6 | Writes and enables `/etc/systemd/system/silocontroller.service` |
 | 7 | Adds `pi` user to `gpio` group |
-| 8 | Starts mosquitto and silocontroller immediately |
+| 8 | Creates "Skopa Silo Controller" desktop icon (if desktop present) |
+| 9 | Installs network overlay timer (shows IP on wallpaper) |
+| 10 | Starts mosquitto and silocontroller immediately |
 
 ---
 
@@ -174,7 +176,8 @@ curl -X POST http://$PI:5000/api/config/declare \
 | `silo_state.json` | Relay position and travel time — survives reboots |
 | `calibration.json` | Pitch/roll offsets |
 | `recordings/*.csv` | Telemetry recordings |
-| `recordings/video/*.mp4` | Video recordings (640×560 H264, 20 fps) |
+| `recordings/video/*.mp4` | Video recordings (1280×720 H264, 30 fps) |
+| `logs/api_messages.jsonl` | Persistent log of all inbound API actions |
 
 ---
 

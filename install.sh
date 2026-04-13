@@ -93,8 +93,9 @@ else
     ok "Code copied"
 fi
 
-# Ensure recordings directories exist with placeholder files
+# Ensure runtime directories exist
 mkdir -p "$INSTALL_DIR/recordings/video"
+mkdir -p "$INSTALL_DIR/logs"
 touch "$INSTALL_DIR/recordings/.gitkeep"
 touch "$INSTALL_DIR/recordings/video/.gitkeep"
 
@@ -219,7 +220,68 @@ else
     warn "gpio group not found — GPIO may need root; recheck after reboot"
 fi
 
-# ── Step 7: Start services ───────────────────────────────────────────────────
+# ── Step 7: Desktop icon ────────────────────────────────────────────────────
+section "Desktop icon"
+
+DESKTOP_DIR="$PI_HOME/Desktop"
+if [[ -d "$DESKTOP_DIR" ]]; then
+    cat > "$DESKTOP_DIR/silo-controller.desktop" <<DESK
+[Desktop Entry]
+Type=Application
+Name=Skopa Silo Controller
+Comment=Open Skopa Silo Controller web interface
+Exec=chromium http://localhost:5000
+Icon=${INSTALL_DIR}/assets/silo-icon.png
+Terminal=false
+Categories=Utility;
+DESK
+    chmod +x "$DESKTOP_DIR/silo-controller.desktop"
+    chown "$PI_USER:$PI_USER" "$DESKTOP_DIR/silo-controller.desktop"
+    ok "Desktop shortcut created"
+else
+    info "No Desktop directory — skipping icon (headless mode)"
+fi
+
+# ── Step 8: Network overlay on wallpaper ────────────────────────────────────
+section "Network overlay (wallpaper)"
+
+SYSTEMD_USER_DIR="$PI_HOME/.config/systemd/user"
+mkdir -p "$SYSTEMD_USER_DIR"
+
+cat > "$SYSTEMD_USER_DIR/net-overlay.service" <<'SVC'
+[Unit]
+Description=Burn network info into desktop wallpaper
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/pi/SiloController/tools/net_overlay.py
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+SVC
+
+cat > "$SYSTEMD_USER_DIR/net-overlay.timer" <<'TMR'
+[Unit]
+Description=Refresh network wallpaper overlay every 30 seconds
+
+[Timer]
+OnBootSec=10
+OnUnitActiveSec=30
+AccuracySec=5
+
+[Install]
+WantedBy=default.target
+TMR
+
+chown -R "$PI_USER:$PI_USER" "$SYSTEMD_USER_DIR"
+
+# Enable the timer for the pi user
+sudo -u "$PI_USER" XDG_RUNTIME_DIR="/run/user/$(id -u $PI_USER)" \
+    systemctl --user daemon-reload 2>/dev/null || true
+sudo -u "$PI_USER" XDG_RUNTIME_DIR="/run/user/$(id -u $PI_USER)" \
+    systemctl --user enable net-overlay.timer 2>/dev/null || true
+ok "Network overlay timer installed (activates on next desktop login)"
+
+# ── Step 9: Start services ───────────────────────────────────────────────────
 section "Starting services"
 
 systemctl start "$SERVICE_NAME"
