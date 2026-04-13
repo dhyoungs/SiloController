@@ -288,10 +288,10 @@ class TelemetryReader:
                 else:
                     self._simulate()
             except Exception as exc:
-                logger.error("Telemetry error: %s — retrying in 5 s", exc)
+                logger.error("Telemetry error: %s — retrying in 3 s", exc)
                 with self._lock:
                     self._diag["connected"] = False
-                time.sleep(5)
+                time.sleep(3)
 
     def _read_mavlink(self) -> None:
         # Resolve port — auto-detect if not fixed
@@ -299,14 +299,22 @@ class TelemetryReader:
         if port is None:
             port = self._find_port()
             if port is None:
-                logger.warning("No MAVLink device found — retrying in 10 s")
-                time.sleep(10)
+                logger.info("No MAVLink device found — retrying in 5 s")
+                time.sleep(5)
                 return
             with self._lock:
                 self._diag["port"] = port
 
         logger.info("MAVLink connecting on %s @ %d baud", port, self._baud)
-        conn = _mavutil.mavlink_connection(port, baud=self._baud)
+        try:
+            conn = _mavutil.mavlink_connection(port, baud=self._baud)
+        except Exception as exc:
+            logger.warning("Could not open %s: %s — will re-probe", port, exc)
+            with self._lock:
+                self._diag["connected"] = False
+                self._diag["port"] = None
+            time.sleep(3)
+            return
 
         hb = conn.wait_heartbeat(timeout=15)
         if hb is None:
@@ -315,7 +323,9 @@ class TelemetryReader:
             with self._lock:
                 self._diag["connected"] = False
                 self._diag["port"] = None
-            raise RuntimeError("No MAVLink heartbeat within 15 s")
+            logger.warning("No heartbeat on %s — will re-probe", port)
+            time.sleep(3)
+            return
 
         with self._lock:
             self._diag["connected"] = True
@@ -348,17 +358,25 @@ class TelemetryReader:
 
         _missed = 0
         while self._running:
-            msg = conn.recv_match(blocking=True, timeout=2.0)
+            try:
+                msg = conn.recv_match(blocking=True, timeout=2.0)
+            except Exception as exc:
+                # Serial port yanked or I/O error — disconnect cleanly
+                logger.warning("MAVLink read error on %s: %s — reconnecting", port, exc)
+                break
             if msg is None:
                 _missed += 1
                 if _missed >= 10:   # 20 s silence → treat as disconnected
-                    logger.warning("MAVLink silence on %s — disconnecting", port)
+                    logger.warning("MAVLink silence on %s — reconnecting", port)
                     break
                 continue
             _missed = 0
             self._ingest(msg)
 
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
         self._conn = None
         with self._lock:
             self._diag["connected"] = False
