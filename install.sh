@@ -289,6 +289,23 @@ sudo -u "$PI_USER" XDG_RUNTIME_DIR="/run/user/$(id -u $PI_USER)" \
     systemctl --user enable net-overlay.timer 2>/dev/null || true
 ok "Network overlay timer installed (activates on next desktop login)"
 
+# ── Step 8b: Display rotation (Pi Touch Display 2) ─────────────────────────
+KANSHI_DIR="$PI_HOME/.config/kanshi"
+mkdir -p "$KANSHI_DIR"
+cat > "$KANSHI_DIR/config" <<'KANSHI'
+profile {
+    output DSI-2 mode 720x1280 transform 90
+}
+KANSHI
+chown -R "$PI_USER:$PI_USER" "$KANSHI_DIR"
+ok "Touch Display 2 rotation set to landscape"
+
+# ── Step 8c: Disable on-screen keyboard ─────────────────────────────────────
+if [[ -x /usr/bin/squeekboard ]]; then
+    chmod -x /usr/bin/squeekboard
+    ok "On-screen keyboard (squeekboard) disabled"
+fi
+
 # ── Step 9: Start services ───────────────────────────────────────────────────
 section "Starting services"
 
