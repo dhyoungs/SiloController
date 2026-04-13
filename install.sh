@@ -230,7 +230,7 @@ if [[ -d "$DESKTOP_DIR" ]]; then
 Type=Application
 Name=Skopa Silo Controller
 Comment=Open Skopa Silo Controller web interface
-Exec=chromium http://localhost:5000
+Exec=chromium --kiosk http://localhost:5000
 Icon=${INSTALL_DIR}/assets/silo-icon.png
 Terminal=false
 Categories=Utility;

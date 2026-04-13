@@ -33,9 +33,9 @@ PCMANFM_CONF = Path.home() / ".config" / "pcmanfm" / "default" / "pcmanfm.conf"
 FONT_PATH = "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf"
 
 # Physical text size target in millimetres (constant across resolutions)
-TEXT_HEIGHT_MM = 4.0        # height of each text line
-BOX_PADDING_MM = 2.5        # internal padding inside the box
-BOX_MARGIN_MM  = 8.0        # margin from screen edge to box
+TEXT_HEIGHT_MM = 6.0        # height of each text line
+BOX_PADDING_MM = 3.75       # internal padding inside the box
+BOX_MARGIN_MM  = 12.0       # margin from screen edge to box
 
 TEXT_COLOR   = (0, 255, 136)        # bright green
 BOX_COLOR    = (0, 0, 0, 180)       # black, semi-transparent

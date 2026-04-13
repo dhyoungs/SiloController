@@ -12,6 +12,14 @@
       --dim:    #3a5a7a; --muted:  #6080a0; --white:  #e0f0ff;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:24px}
+    @media(max-width:1300px){
+      html{font-size:20px}
+      .tab-btn{padding:.5rem .9rem;min-height:44px}
+      button{min-height:44px}
+      .btn-hdr{min-height:40px;padding:.35rem .8rem}
+      .btn-sm{min-height:38px;padding:.3rem .6rem}
+    }
     body{font-family:"Courier New",Courier,monospace;background:var(--bg);
          color:var(--fg);min-height:100vh}
 
