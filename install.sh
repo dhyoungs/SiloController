@@ -225,18 +225,21 @@ section "Desktop icon"
 
 DESKTOP_DIR="$PI_HOME/Desktop"
 if [[ -d "$DESKTOP_DIR" ]]; then
-    cat > "$DESKTOP_DIR/silo-controller.desktop" <<DESK
+    DESK_FILE="$DESKTOP_DIR/skopa-silo-controller.desktop"
+    cat > "$DESK_FILE" <<DESK
 [Desktop Entry]
 Type=Application
 Name=Skopa Silo Controller
 Comment=Open Skopa Silo Controller web interface
-Exec=chromium --kiosk http://localhost:5000
+Exec=chromium --kiosk --new-window http://localhost:5000
 Icon=${INSTALL_DIR}/assets/silo-icon.png
 Terminal=false
 Categories=Utility;
 DESK
-    chmod +x "$DESKTOP_DIR/silo-controller.desktop"
-    chown "$PI_USER:$PI_USER" "$DESKTOP_DIR/silo-controller.desktop"
+    chmod +x "$DESK_FILE"
+    chown "$PI_USER:$PI_USER" "$DESK_FILE"
+    # Trust the file so pcmanfm doesn't prompt before launching
+    sudo -u "$PI_USER" gio set "$DESK_FILE" metadata::trusted true 2>/dev/null || true
     ok "Desktop shortcut created"
 else
     info "No Desktop directory — skipping icon (headless mode)"
