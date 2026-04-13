@@ -231,7 +231,7 @@ if [[ -d "$DESKTOP_DIR" ]]; then
 Type=Application
 Name=Skopa Silo Controller
 Comment=Open Skopa Silo Controller web interface
-Exec=chromium --kiosk --new-window http://localhost:5000
+Exec=chromium --kiosk --user-data-dir=/home/pi/.config/chromium-kiosk http://localhost:5000
 Icon=${INSTALL_DIR}/assets/silo-icon.png
 Terminal=false
 Categories=Utility;
