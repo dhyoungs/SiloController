@@ -240,6 +240,11 @@ DESK
     chown "$PI_USER:$PI_USER" "$DESK_FILE"
     # Trust the file so pcmanfm doesn't prompt before launching
     sudo -u "$PI_USER" gio set "$DESK_FILE" metadata::trusted true 2>/dev/null || true
+    # Enable quick_exec in libfm so .desktop files launch without prompt
+    LIBFM_CONF="$PI_HOME/.config/libfm/libfm.conf"
+    if [[ -f "$LIBFM_CONF" ]]; then
+        sed -i 's/quick_exec=0/quick_exec=1/' "$LIBFM_CONF"
+    fi
     ok "Desktop shortcut created"
 else
     info "No Desktop directory — skipping icon (headless mode)"
