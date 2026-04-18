@@ -33,6 +33,7 @@ from pathlib import Path
 from flask import Flask, Response, jsonify, render_template, request, send_file
 
 from core.api_log import log_api_message, read_log, log_count
+from core.sysinfo import stats as sysstats
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +177,12 @@ def status():
         **_recorder.status(),
         "uptime_s": int(time.monotonic() - _start_t),
     })
+
+
+@app.route("/api/stats")
+def api_stats():
+    # Standard cross-project sysbar endpoint. Matches LAMT / Skopa contract.
+    return jsonify(sysstats(port=5000))
 
 
 @app.route("/api/open", methods=["POST"])

@@ -172,10 +172,12 @@
     <span class="t2">Silo 2 Controller</span>
   </div>
   <div class="hdr-meta">
-    <span><span class="lbl">IP </span><span class="hl" id="pi-ip">—</span></span>
-    <span><span class="lbl">SW UP </span><span class="hl" id="sw-uptime">—</span></span>
-    <span><span class="lbl">HW UP </span><span class="hl" id="hw-uptime">—</span></span>
     <span><span class="lbl">UTC </span><span class="hl" id="utc-time">—</span></span>
+    <span><span class="lbl">IP </span><span class="hl" id="pi-ip">—</span></span>
+    <span><span class="lbl">PI </span><span class="hl" id="hw-uptime">—</span></span>
+    <span><span class="lbl">APP </span><span class="hl" id="sw-uptime">—</span></span>
+    <span><span class="lbl">RAM </span><span class="hl" id="ram-usage">—</span></span>
+    <span><span class="lbl">DISK </span><span class="hl" id="disk-usage">—</span></span>
     <button class="btn-hdr" id="btn-restart" onclick="doRestart()">RESTART</button>
   </div>
 </header>
@@ -1232,23 +1234,25 @@ function applyTelemetry(t){
 }
 
 // ── Heartbeat / system info ───────────────────────────────────────────────────
-function applyHeartbeat(d){
-  if(d.sw_uptime_s!==undefined)$('sw-uptime').textContent=fmtHMS(d.sw_uptime_s);
-  if(d.hw_uptime_s!==undefined)$('hw-uptime').textContent=fmtHMS(d.hw_uptime_s);
-  if(d.utc)$('utc-time').textContent=d.utc;
-  if(d.ip&&d.ip!=='—')$('pi-ip').textContent=d.ip;
-  // Legacy field
-  if(d.uptime_s!==undefined&&d.sw_uptime_s===undefined)
-    $('sw-uptime').textContent=fmtHMS(d.uptime_s);
-}
+// Header status fields (UTC/IP/PI/APP/RAM/DISK) are owned by pollStats()
+// below via /api/stats; SSE heartbeat is kept as a liveness signal only.
+function applyHeartbeat(d){ /* no-op — see pollStats() */ }
 
-// Fetch real IP immediately on load
-fetch('/api/system').then(r=>r.json()).then(d=>{
-  if(d.ip)$('pi-ip').textContent=d.ip;
-  if(d.sw_uptime_s)$('sw-uptime').textContent=fmtHMS(d.sw_uptime_s);
-  if(d.hw_uptime_s)$('hw-uptime').textContent=fmtHMS(d.hw_uptime_s);
-  if(d.utc)$('utc-time').textContent=d.utc;
-}).catch(()=>{});
+// Standard cross-project status bar — polls /api/stats every 5 s.
+async function pollStats(){
+  try{
+    const r=await fetch('/api/stats',{cache:'no-store'});
+    const j=await r.json();
+    if($('utc-time'))     $('utc-time').textContent=j.utc;
+    if($('pi-ip'))        $('pi-ip').textContent=`${j.ip}:${j.port}`;
+    if($('hw-uptime'))    $('hw-uptime').textContent=j.pi_uptime;
+    if($('sw-uptime'))    $('sw-uptime').textContent=j.app_uptime;
+    if($('ram-usage'))    $('ram-usage').textContent=`${j.ram_used}/${j.ram_total}`;
+    if($('disk-usage'))   $('disk-usage').textContent=`${j.disk_used}/${j.disk_total}`;
+  }catch(e){}
+}
+pollStats();
+setInterval(pollStats,5000);
 
 // Local UTC clock tick (updates every second between SSE heartbeats)
 function tickUTC(){
