@@ -1239,6 +1239,13 @@ function applyTelemetry(t){
 function applyHeartbeat(d){ /* no-op — see pollStats() */ }
 
 // Standard cross-project status bar — polls /api/stats every 5 s.
+// API shape matches LAMT: {utc, ip, port, pi_uptime, app_uptime,
+// ram, ram_pct, disk, disk_pct}.
+function _sevColor(pct){
+  if(pct>=90) return '#ff6b5c';
+  if(pct>=75) return '#f0b429';
+  return '';
+}
 async function pollStats(){
   try{
     const r=await fetch('/api/stats',{cache:'no-store'});
@@ -1247,8 +1254,14 @@ async function pollStats(){
     if($('pi-ip'))        $('pi-ip').textContent=`${j.ip}:${j.port}`;
     if($('hw-uptime'))    $('hw-uptime').textContent=j.pi_uptime;
     if($('sw-uptime'))    $('sw-uptime').textContent=j.app_uptime;
-    if($('ram-usage'))    $('ram-usage').textContent=`${j.ram_used}/${j.ram_total}`;
-    if($('disk-usage'))   $('disk-usage').textContent=`${j.disk_used}/${j.disk_total}`;
+    if($('ram-usage')){
+      $('ram-usage').textContent=`${j.ram} (${j.ram_pct}%)`;
+      $('ram-usage').style.color=_sevColor(j.ram_pct);
+    }
+    if($('disk-usage')){
+      $('disk-usage').textContent=`${j.disk} (${j.disk_pct}%)`;
+      $('disk-usage').style.color=_sevColor(j.disk_pct);
+    }
   }catch(e){}
 }
 pollStats();
