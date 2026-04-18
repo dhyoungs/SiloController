@@ -319,6 +319,19 @@ else
     warn "Check logs with:  journalctl -u $SERVICE_NAME -n 50"
 fi
 
+# Wait up to 10 s for the web server to bind and verify the sysbar endpoint.
+for _ in $(seq 1 10); do
+    if ss -ltn 2>/dev/null | awk '{print $4}' | grep -q ':5000$'; then break; fi
+    sleep 1
+done
+STATS=$(curl -fsS --max-time 5 http://127.0.0.1:5000/api/stats 2>/dev/null || true)
+if [[ -n "$STATS" ]]; then
+    UTC=$(echo "$STATS" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("utc","?"))' 2>/dev/null)
+    ok "GET /api/stats replied (UTC $UTC)"
+else
+    warn "GET /api/stats failed — check 'journalctl -u $SERVICE_NAME'"
+fi
+
 # ── Done ─────────────────────────────────────────────────────────────────────
 IP=$(hostname -I | awk '{print $1}')
 echo ""
